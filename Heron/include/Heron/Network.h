@@ -19,6 +19,8 @@ namespace Heron
 			bool initialize = false
 		);
 
+		Network() = default;
+
 		void init_params();
 
 		void forward(const std::vector<float>& input);

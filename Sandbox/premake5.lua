@@ -23,8 +23,16 @@ project "Sandbox"
         "Heron"
     }
 
+    postbuildcommands
+	{
+		("{COPYDIR} %{wks.location}/Heron/datasets %{cfg.targetdir}/datasets")
+	}
+
     -- Ensure Heron.dll is copied to Sandbox folder after build
     filter "system:windows"
+        systemversion "latest"
+        debugdir ("%{cfg.targetdir}")
+
         postbuildcommands {
             ("{COPYFILE} %{wks.location}/bin/" .. outputdir .. "/Heron/Heron.dll %{cfg.buildtarget.directory}")
         }
@@ -44,8 +52,10 @@ project "Sandbox"
         defines "HRN_RELEASE"
         runtime "Release"
         optimize "on"
+        symbols "off"
 
     filter "configurations:Dist"
         defines "HRN_DIST"
         runtime "Release"
         optimize "on"
+        symbols "off"

@@ -2,6 +2,7 @@
 #include <string>
 #include <vector>
 #include <fstream>
+#include <filesystem>
 #include <iostream>
 #include <stdexcept>
 #include <cstdint>
@@ -68,6 +69,8 @@ namespace Heron {
 
 		static void write_28x28_bmp(const std::vector<float>& img, const std::string& path) {
 			if (img.size() != 28 * 28) throw std::runtime_error("Image buffer ain't 28x28");
+
+			std::filesystem::create_directories(std::filesystem::path(path).parent_path());
 
 			std::ofstream out(path, std::ios::binary);
 			if (!out) throw std::runtime_error("Couldn't write BMP: " + path);

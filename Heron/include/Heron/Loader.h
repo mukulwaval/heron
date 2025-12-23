@@ -21,8 +21,8 @@ namespace Heron {
 		}
 
 		bool load(const std::string& split) {
-			std::string img_file = path + "/" + split + "_images.bin";
-			std::string lbl_file = path + "/" + split + "_labels.bin";
+			std::string img_file = path + "/" + split + "_images.hrndt";
+			std::string lbl_file = path + "/" + split + "_labels.hrndt";
 
 			std::ifstream img_in(img_file, std::ios::binary);
 			std::ifstream lbl_in(lbl_file, std::ios::binary);

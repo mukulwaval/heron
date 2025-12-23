@@ -34,13 +34,20 @@ project "HeronGui"
 		"Heron"
 	}
 
+
+	postbuildcommands
+	{
+		("{COPYDIR} %{wks.location}/Heron/datasets %{cfg.targetdir}/datasets"),
+		("{COPYDIR} %{wks.location}/HeronGui/src/assets %{cfg.targetdir}/assets")
+	}
+
 	filter "system:windows"
 		systemversion "latest"
 		debugdir "%{cfg.targetdir}"
 		
 		postbuildcommands
 		{
-			'robocopy "%{wks.location}HeronGui\\src\\assets" "%{cfg.targetdir}\\assets" /E /NFL /NDL /NJH /NJS /nc /ns /np || exit 0'
+			("{COPYFILE} %{wks.location}/bin/" .. outputdir .. "/Heron/Heron.dll %{cfg.targetdir}")
 		}
 
 		links
@@ -50,6 +57,12 @@ project "HeronGui"
 			"dxguid"
 		}
 
+	filter { "system:windows", "configurations:Debug" }
+        postbuildcommands {
+            -- PDB ONLY in Debug
+            ("{COPYFILE} %{wks.location}/bin/" .. outputdir .. "/Heron/Heron.pdb %{cfg.buildtarget.directory}")
+        }
+	
 	filter "configurations:Debug"
 		defines "HRN_DEBUG"
 		runtime "Debug"
@@ -60,8 +73,10 @@ project "HeronGui"
 		defines "HRN_RELEASE"
 		runtime "Release"
 		optimize "on"
+		symbols "off"
 
 	filter "configurations:Dist"
 		defines "HRN_DIST"
 		runtime "Release"
 		optimize "on"
+		symbols "off"

@@ -23,11 +23,6 @@ project "Heron"
 	filter "system:windows"
 		systemversion "latest"
 
-		postbuildcommands
-		{
-			("{COPYFILE} %{cfg.buildtarget.relpath} %{wks.location}/bin/" .. outputdir .. "/HeronGui/Heron.dll")
-		}
-
 		defines
 		{
 			"HRN_PLATFORM_WINDOWS",
@@ -44,8 +39,10 @@ project "Heron"
 		defines "HRN_RELEASE"
 		runtime "Release"
 		optimize "on"
+		symbols "off"
 
 	filter "configurations:Dist"
 		defines "HRN_DIST"
 		runtime "Release"
 		optimize "on"
+		symbols "off"
