@@ -1,0 +1,57 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="include">
+      <UniqueIdentifier>{89AF369E-F58E-B539-FEA6-40106A051C9B}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\Heron">
+      <UniqueIdentifier>{14221BA3-80E2-96D9-491D-E056B59CDBB5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src">
+      <UniqueIdentifier>{2DAB880B-99B4-887C-2230-9F7C8E38947C}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\Heron">
+      <UniqueIdentifier>{B8480CB3-24B3-C029-6DF1-71CFD99A9E7E}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="include\Heron.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Heron\Activations.h">
+      <Filter>include\Heron</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Heron\Application.h">
+      <Filter>include\Heron</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Heron\Core.h">
+      <Filter>include\Heron</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Heron\FileIO.h">
+      <Filter>include\Heron</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Heron\Inference.h">
+      <Filter>include\Heron</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Heron\Loader.h">
+      <Filter>include\Heron</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Heron\Network.h">
+      <Filter>include\Heron</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Heron\Trainer.h">
+      <Filter>include\Heron</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Heron\Utils.h">
+      <Filter>include\Heron</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\Heron\Application.cpp">
+      <Filter>src\Heron</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Heron\Network.cpp">
+      <Filter>src\Heron</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>
