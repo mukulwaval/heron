@@ -68,10 +68,7 @@ restart:
 			}
 		}
 
-		// Same network architecture
-//		std::vector<size_t> layer_sizes = { 28 * 28, 10, 10 };
-//  		std::vector<ActFn> activations = { Activation::relu, Activation::softmax };
-		Network net/*(layer_sizes, activations)*/;
+		Network net;
 		net.load_model("model.hrnmdl");
 
 		if (choice == 2) {
