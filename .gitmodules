@@ -1,3 +1,0 @@
-[submodule "HeronGui/vendor/imgui"]
-	path = HeronGui/vendor/imgui
-	url = https://github.com/MukulWaval/imgui.git
