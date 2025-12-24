@@ -25,6 +25,7 @@ project "HeronGui"
 
     includedirs
 	{
+		"%{prj.location}/src",
 		"%{IncludeDir.ImGui}",
 		"%{IncludeDir.ImGui}/backends",
 		"%{wks.location}/Heron/include"
@@ -38,7 +39,7 @@ project "HeronGui"
 	postbuildcommands
 	{
 		("{COPYDIR} %{wks.location}/Heron/datasets %{cfg.targetdir}/datasets"),
-		("{COPYDIR} %{wks.location}/HeronGui/src/assets %{cfg.targetdir}/assets")
+		("{COPYDIR} %{wks.location}/HeronGui/assets %{cfg.targetdir}/assets")
 	}
 
 	filter "system:windows"
