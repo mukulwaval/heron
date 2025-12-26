@@ -20,7 +20,17 @@ project "HeronGui"
 		"vendor/imgui/imgui_demo.cpp",
 
 		"vendor/imgui/backends/imgui_impl_win32.cpp",
-		"vendor/imgui/backends/imgui_impl_dx12.cpp"
+		"vendor/imgui/backends/imgui_impl_dx12.cpp",
+
+		"vendor/imgui-node-editor/imgui_node_editor.h",
+		"vendor/imgui-node-editor/imgui_node_editor.cpp",
+		"vendor/imgui-node-editor/imgui_node_editor_api.cpp",
+
+		"vendor/imgui-node-editor/imgui_canvas.cpp",
+   		"vendor/imgui-node-editor/crude_json.cpp",
+
+		"vendor/fmt/src/format.cc",
+    	"vendor/fmt/src/os.cc"
 	}
 
     includedirs
@@ -28,7 +38,9 @@ project "HeronGui"
 		"%{prj.location}/src",
 		"%{IncludeDir.ImGui}",
 		"%{IncludeDir.ImGui}/backends",
-		"%{wks.location}/Heron/include"
+		"%{wks.location}/HeronGui/vendor/imgui-node-editor",
+		"%{wks.location}/Heron/include",
+		"%{wks.location}/HeronGui/vendor/fmt/include"
 	}
 
 	links {
@@ -45,6 +57,7 @@ project "HeronGui"
 	filter "system:windows"
 		systemversion "latest"
 		debugdir "%{cfg.targetdir}"
+		buildoptions { "/utf-8" }
 		
 		postbuildcommands
 		{

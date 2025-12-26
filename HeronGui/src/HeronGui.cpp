@@ -9,7 +9,11 @@
 #include "imgui.h"
 #include "imgui_impl_win32.h"
 #include "imgui_impl_dx12.h"
-#include "application.h"
+#include "Application.h"
+#include "Configuration/Style.h"
+#include "Configuration/Font.h"
+#include "AppState.h"
+#include "Components/NodeEditor.h"
 #include "resource.h"
 #include <d3d12.h>
 #include <dxgi1_5.h>
@@ -175,6 +179,9 @@ int WinMain(
     // Setup Platform/Renderer backends
     ImGui_ImplWin32_Init(hwnd);
 
+	// Initialize Node Editor
+    HeronGui::Component::NodeEditor::Init();
+
     ImGui_ImplDX12_InitInfo init_info = {};
     init_info.Device = g_pd3dDevice;
     init_info.CommandQueue = g_pd3dCommandQueue;
@@ -191,23 +198,14 @@ int WinMain(
     // Before 1.91.6: our signature was using a single descriptor. From 1.92, specifying SrvDescriptorAllocFn/SrvDescriptorFreeFn will be required to benefit from new features.
     //ImGui_ImplDX12_Init(g_pd3dDevice, APP_NUM_FRAMES_IN_FLIGHT, DXGI_FORMAT_R8G8B8A8_UNORM, g_pd3dSrvDescHeap, g_pd3dSrvDescHeap->GetCPUDescriptorHandleForHeapStart(), g_pd3dSrvDescHeap->GetGPUDescriptorHandleForHeapStart());
 
-    // Load Fonts
-    // - If no fonts are loaded, dear imgui will use the default font.
-    // - You can load multiple fonts and use ImGui::PushFont()/PopFont() to select them.
-    // - AddFontFromFileTTF() returns an ImFont* so you can store it and switch fonts later.
-    // - If the font file cannot be loaded, the function will return nullptr.
-    // - Handle failures with IM_ASSERT or your own error handling.
-    // - Variable fonts work out of the box (Regular / 400 is used by default).
-    // - Italic fonts must be loaded as separate font files.
-    // - Make sure fonts are loaded AFTER ImGui::CreateContext()
-    //   and BEFORE ImGui_ImplDX12_Init().
+	// Load Fonts
+    HeronGui::Configuration::Font::LoadFonts();
 
-    HeronGui::LoadApplicationFonts();
-    HeronGui::SetupImGuiStyle();
+	// Setup custom style
+    HeronGui::Configuration::Style::SetupStyle();
 
     // Our state
-    bool show_demo_window = true;
-    bool show_another_window = false;
+    HeronGui::AppState appState;
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
     // Main loop
@@ -240,7 +238,7 @@ int WinMain(
         ImGui_ImplWin32_NewFrame();
         ImGui::NewFrame();
 
-        HeronGui::RenderUI();
+        HeronGui::RenderUI(appState);
 
         // Rendering
         ImGui::Render();
@@ -290,6 +288,9 @@ int WinMain(
     }
 
     WaitForPendingOperations();
+
+	// Shutdown Node Editor
+	HeronGui::Component::NodeEditor::Shutdown();
 
     // Cleanup
     ImGui_ImplDX12_Shutdown();
