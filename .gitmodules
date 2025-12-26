@@ -1,3 +1,9 @@
 [submodule "HeronGui/vendor/imgui"]
 	path = HeronGui/vendor/imgui
 	url = https://github.com/mukulwaval/imgui.git
+[submodule "HeronGui/vendor/imgui-node-editor"]
+	path = HeronGui/vendor/imgui-node-editor
+	url = https://github.com/mukulwaval/imgui-node-editor
+[submodule "HeronGui/vendor/fmt"]
+	path = HeronGui/vendor/fmt
+	url = https://github.com/fmtlib/fmt
