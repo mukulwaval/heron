@@ -34,6 +34,8 @@ project "HeronGui"
 		-- fmt
 		"vendor/fmt/src/format.cc",
 		"vendor/fmt/src/os.cc",
+
+		"vendor/stb_image/stb_image.h"
 	}
 
 	includedirs
