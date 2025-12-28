@@ -106,7 +106,7 @@ project "HeronGui"
 			"vendor/imgui/backends/imgui_impl_glfw.cpp",
 			"vendor/imgui/backends/imgui_impl_opengl3.cpp",
 			"source/platform_glfw.cpp",
-			"source/renderer_opengl.cpp"
+			"source/renderer_ogl3.cpp"
 		}
 
 		defines
