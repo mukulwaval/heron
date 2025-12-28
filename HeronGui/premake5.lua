@@ -64,6 +64,8 @@ project "HeronGui"
 			"%{prj.location}/**.rc",
 			"vendor/imgui/backends/imgui_impl_win32.cpp",
 			"vendor/imgui/backends/imgui_impl_dx11.cpp",
+			"source/platform_win32.cpp",
+			"source/renderer_dx11.cpp"
 		}
 
 		defines
@@ -103,6 +105,8 @@ project "HeronGui"
 		{
 			"vendor/imgui/backends/imgui_impl_glfw.cpp",
 			"vendor/imgui/backends/imgui_impl_opengl3.cpp",
+			"source/platform_glfw.cpp",
+			"source/renderer_opengl.cpp"
 		}
 
 		defines
