@@ -11,8 +11,12 @@ project "HeronGui"
 	{
 		"%{prj.location}/include/**.h",
 		"%{prj.location}/HeronGui.cpp",
-		"%{prj.location}/source/**.cpp",
-		"%{prj.location}/source/**.h",
+		"%{prj.location}/source/entry_point.cpp",
+		"%{prj.location}/source/platform.h",
+		"%{prj.location}/source/setup.h",
+		"%{prj.location}/source/renderer.h",
+		"%{prj.location}/source/config.h",
+		"%{prj.location}/source/application.cpp",
 
 		-- ImGui core
 		"vendor/imgui/imgui.cpp",
@@ -43,7 +47,8 @@ project "HeronGui"
 
 		"%{wks.location}/Heron/include",
 		"%{wks.location}/HeronGui/vendor/ImNodeFlow/include",
-		"%{wks.location}/HeronGui/vendor/fmt/include"
+		"%{wks.location}/HeronGui/vendor/fmt/include",
+		"%{wks.location}/HeronGui/vendor/glad/include"
 	}
 
 	links { "Heron" }
@@ -106,14 +111,18 @@ project "HeronGui"
 			"vendor/imgui/backends/imgui_impl_glfw.cpp",
 			"vendor/imgui/backends/imgui_impl_opengl3.cpp",
 			"source/platform_glfw.cpp",
-			"source/renderer_ogl3.cpp"
+			"source/renderer_ogl3.cpp",
+			"vendor/glad/src/glad.c"
 		}
 
 		defines
 		{
 			"HRN_PLATFORM_LINUX",
-			"IMGUI_IMPL_GLFW",
-			"IMGUI_IMPL_OPENGL3"
+			"IMGUI_GLFW",
+			"IMGUI_OPENGL3",
+			"RENDERER_IMGUI_OGL3",
+    		"BACKEND_IMGUI_GLFW",
+			"IMGUI_IMPL_OPENGL_LOADER_GLAD"
 		}
 
 		pic "On"
@@ -123,7 +132,8 @@ project "HeronGui"
 			"GL",
 			"X11",
 			"pthread",
-			"dl"
+			"dl",
+			"glfw"
 		}
 
 	filter "configurations:Debug"
