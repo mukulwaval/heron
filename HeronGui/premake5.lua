@@ -10,12 +10,10 @@ project "HeronGui"
 	files
 	{
 		"%{prj.location}/include/**.h",
-		"%{prj.location}/blueprints-example.cpp",
+		"%{prj.location}/HeronGui.cpp",
 		"%{prj.location}/source/**.cpp",
 		"%{prj.location}/source/**.h",
-		"%{prj.location}/utilities/**.cpp",
-		"%{prj.location}/utilities/**.h",
-		-- "%{prj.location}/**.rc",
+		"%{prj.location}/**.rc",
 
 		"vendor/imgui/imgui.cpp",
 		"vendor/imgui/imgui_draw.cpp",
@@ -26,15 +24,11 @@ project "HeronGui"
 		"vendor/imgui/backends/imgui_impl_win32.cpp",
 		"vendor/imgui/backends/imgui_impl_dx11.cpp",
 
-		"vendor/imgui-node-editor/imgui_node_editor.h",
-		"vendor/imgui-node-editor/imgui_node_editor.cpp",
-		"vendor/imgui-node-editor/imgui_node_editor_api.cpp",
-		"vendor/imgui-node-editor/imgui_node_editor_internal.inl",
-		"vendor/imgui-node-editor/imgui_node_editor_internal.h",
-
-		"vendor/imgui-node-editor/imgui_canvas.cpp",
-   		"vendor/imgui-node-editor/crude_json.cpp",
-
+		"vendor/ImNodeFlow/include/ImNodeFlow.h",
+		"vendor/ImNodeFlow/src/**.h",
+		"vendor/ImNodeFlow/src/**.cpp",
+		"vendor/ImNodeFlow/src/**.inl",
+		
 		"vendor/fmt/src/format.cc",
     	"vendor/fmt/src/os.cc",
 	}
@@ -46,7 +40,7 @@ project "HeronGui"
 		"%{prj.location}/include",
 		"%{IncludeDir.ImGui}",
 		"%{IncludeDir.ImGui}/backends",
-		"%{wks.location}/HeronGui/vendor/imgui-node-editor",
+		"%{wks.location}/HeronGui/vendor/ImNodeFlow/include",
 		"%{wks.location}/Heron/include",
 		"%{wks.location}/HeronGui/vendor/fmt/include"
 	}
@@ -59,8 +53,7 @@ project "HeronGui"
 	postbuildcommands
 	{
 		("{COPYDIR} %{wks.location}/Heron/datasets %{cfg.targetdir}/datasets"),
-		("{COPYDIR} %{wks.location}/HeronGui/assets %{cfg.targetdir}/assets"),
-		("{COPYDIR} %{wks.location}/HeronGui/data %{cfg.targetdir}/data")
+		("{COPYDIR} %{wks.location}/HeronGui/assets %{cfg.targetdir}/assets")
 	}
 
 	filter "system:windows"

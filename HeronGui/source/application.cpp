@@ -87,44 +87,15 @@ int Application::Run()
 
 void Application::RecreateFontAtlas()
 {
-    ImGuiIO& io = ImGui::GetIO();
-
-    // Clear previous fonts but keep the atlas object alive
-    io.Fonts->Clear();
-
-    ImFontConfig config;
-    config.OversampleH = 4;
-    config.OversampleV = 4;
-    config.PixelSnapH = false;
-
-    // Load your fonts
-    m_DefaultFont = io.Fonts->AddFontFromFileTTF("data/Play-Regular.ttf", 18.0f, &config);
-    m_HeaderFont = io.Fonts->AddFontFromFileTTF("data/Cuprum-Bold.ttf", 20.0f, &config);
-
-    // Safety checks
-    IM_ASSERT(m_DefaultFont && "Failed to load Play-Regular.ttf");
-    IM_ASSERT(m_HeaderFont && "Failed to load Cuprum-Bold.ttf");
-
-    // Build the font atlas (CPU-side)
-    io.Fonts->Build();
-
-    // Upload font texture to GPU
-    unsigned char* pixels;
-    int width, height;
-    io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
-
-    // Your renderer must create GPU texture and store ID in io.Fonts->TexID
-    m_Renderer->CreateTexture(pixels, width, height);
-    //io.Fonts->TexID = m_Renderer->GetFontTextureID();
 }
 
 void Application::Frame()
 {
-    auto& io = ImGui::GetIO();
+    ImGuiIO& io = ImGui::GetIO();
+    io.ConfigFlags &= ~ImGuiConfigFlags_ViewportsEnable;
 
     if (m_Platform->HasWindowScaleChanged())
         m_Platform->AcknowledgeWindowScaleChanged();
-
     if (m_Platform->HasFramebufferScaleChanged())
     {
         RecreateFontAtlas();
@@ -134,49 +105,17 @@ void Application::Frame()
     const float windowScale = m_Platform->GetWindowScale();
     const float framebufferScale = m_Platform->GetFramebufferScale();
 
-    if (io.WantSetMousePos)
-    {
-        io.MousePos.x *= windowScale;
-        io.MousePos.y *= windowScale;
-    }
+    if (io.WantSetMousePos) { io.MousePos.x *= windowScale; io.MousePos.y *= windowScale; }
 
     m_Platform->NewFrame();
-
-    // Don't touch "uninitialized" mouse position
-    if (io.MousePos.x > -FLT_MAX && io.MousePos.y > -FLT_MAX)
-    {
-        io.MousePos.x /= windowScale;
-        io.MousePos.y /= windowScale;
-    }
-    io.DisplaySize.x /= windowScale;
-    io.DisplaySize.y /= windowScale;
-
-    io.DisplayFramebufferScale.x = framebufferScale;
-    io.DisplayFramebufferScale.y = framebufferScale;
-
     m_Renderer->NewFrame();
-
     ImGui::NewFrame();
-
-    ImGui::SetNextWindowPos(ImVec2(0, 0));
-    ImGui::SetNextWindowSize(io.DisplaySize);
-    const auto windowBorderSize = ImGui::GetStyle().WindowBorderSize;
-    const auto windowRounding = ImGui::GetStyle().WindowRounding;
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
-    ImGui::Begin("Content", nullptr, GetWindowFlags());
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, windowBorderSize);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, windowRounding);
 
     OnFrame(io.DeltaTime);
 
-    ImGui::PopStyleVar(2);
-    ImGui::End();
-    ImGui::PopStyleVar(2);
-
-    // Rendering
-    m_Renderer->Clear(ImColor(32, 32, 32, 255));
     ImGui::Render();
+
+    m_Renderer->Clear(ImColor(30, 30, 30, 255));
     m_Renderer->RenderDrawData(ImGui::GetDrawData());
 
     m_Platform->FinishFrame();
@@ -200,16 +139,6 @@ void Application::Quit()
 const std::string& Application::GetName() const
 {
     return m_Name;
-}
-
-ImFont* Application::DefaultFont() const
-{
-    return m_DefaultFont;
-}
-
-ImFont* Application::HeaderFont() const
-{
-    return m_HeaderFont;
 }
 
 ImTextureID Application::LoadTexture(const char* path)

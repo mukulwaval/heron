@@ -1,4 +1,6 @@
 # pragma once
+#define IMGUI_DEFINE_MATH_OPERATORS
+
 # include <imgui.h>
 # include <string>
 # include <memory>
@@ -23,9 +25,6 @@ struct Application
 
     const std::string& GetName() const;
 
-    ImFont* DefaultFont() const;
-    ImFont* HeaderFont() const;
-
     ImTextureID LoadTexture(const char* path);
     ImTextureID CreateTexture(const void* data, int width, int height);
     void        DestroyTexture(ImTextureID texture);
@@ -40,6 +39,24 @@ struct Application
 
     virtual bool CanClose() { return true; }
 
+    ImFont* Italic = nullptr;
+    ImFont* Medium = nullptr;
+    ImFont* MediumItalic = nullptr;
+    ImFont* SemiBold = nullptr;
+    ImFont* SemiBoldItalic = nullptr;
+    ImFont* Bold = nullptr;
+    ImFont* BoldItalic = nullptr;
+
+    ImFont* Mono = nullptr;
+    ImFont* MonoItalic = nullptr;
+    ImFont* MonoMedium = nullptr;
+    ImFont* MonoMediumItalic = nullptr;
+    ImFont* MonoSemiBold = nullptr;
+    ImFont* MonoSemiBoldItalic = nullptr;
+    ImFont* MonoBold = nullptr;
+    ImFont* MonoBoldItalic = nullptr;
+
+    std::unique_ptr<Platform>   m_Platform;
 private:
     void RecreateFontAtlas();
 
@@ -48,10 +65,7 @@ private:
     std::string                 m_Name;
     std::unique_ptr<Renderer>   m_Renderer;
     std::string                 m_IniFilename;
-    std::unique_ptr<Platform>   m_Platform;
     ImGuiContext* m_Context = nullptr;
-    ImFont* m_DefaultFont = nullptr;
-    ImFont* m_HeaderFont = nullptr;
 };
 
 int Main(int argc, char** argv);

@@ -27,6 +27,8 @@ struct Platform
 
     virtual void Quit() = 0;
 
+    virtual void* GetNativeWindowHandle() const { return GetMainWindowHandle(); }
+
     bool  HasWindowScaleChanged() const { return m_WindowScaleChanged; }
     void  AcknowledgeWindowScaleChanged() { m_WindowScaleChanged = false; }
     float GetWindowScale() const { return m_WindowScale; }
