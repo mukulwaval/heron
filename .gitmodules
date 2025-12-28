@@ -4,3 +4,6 @@
 [submodule "HeronGui/vendor/fmt"]
 	path = HeronGui/vendor/fmt
 	url = https://github.com/fmtlib/fmt.git
+[submodule "HeronGui/vendor/ImNodeFlow"]
+	path = HeronGui/vendor/ImNodeFlow
+	url = https://github.com/mukulwaval/ImNodeFlow.git
