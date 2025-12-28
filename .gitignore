@@ -379,5 +379,4 @@ bin-int/
 *.pdb
 *.ilk
 *.obj
-*.exe
 *.dll
