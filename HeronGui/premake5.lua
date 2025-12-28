@@ -13,42 +13,40 @@ project "HeronGui"
 		"%{prj.location}/HeronGui.cpp",
 		"%{prj.location}/source/**.cpp",
 		"%{prj.location}/source/**.h",
-		"%{prj.location}/**.rc",
 
+		-- ImGui core
 		"vendor/imgui/imgui.cpp",
 		"vendor/imgui/imgui_draw.cpp",
 		"vendor/imgui/imgui_tables.cpp",
 		"vendor/imgui/imgui_widgets.cpp",
 		"vendor/imgui/imgui_demo.cpp",
 
-		"vendor/imgui/backends/imgui_impl_win32.cpp",
-		"vendor/imgui/backends/imgui_impl_dx11.cpp",
-
+		-- ImNodeFlow
 		"vendor/ImNodeFlow/include/ImNodeFlow.h",
 		"vendor/ImNodeFlow/src/**.h",
 		"vendor/ImNodeFlow/src/**.cpp",
 		"vendor/ImNodeFlow/src/**.inl",
-		
+
+		-- fmt
 		"vendor/fmt/src/format.cc",
-    	"vendor/fmt/src/os.cc",
+		"vendor/fmt/src/os.cc",
 	}
 
-    includedirs
+	includedirs
 	{
 		"%{prj.location}",
-		"vendor/stb_image",
 		"%{prj.location}/include",
+		"vendor/stb_image",
+
 		"%{IncludeDir.ImGui}",
 		"%{IncludeDir.ImGui}/backends",
-		"%{wks.location}/HeronGui/vendor/ImNodeFlow/include",
+
 		"%{wks.location}/Heron/include",
+		"%{wks.location}/HeronGui/vendor/ImNodeFlow/include",
 		"%{wks.location}/HeronGui/vendor/fmt/include"
 	}
 
-	links {
-		"Heron"
-	}
-
+	links { "Heron" }
 
 	postbuildcommands
 	{
@@ -60,10 +58,19 @@ project "HeronGui"
 		systemversion "latest"
 		debugdir "%{cfg.targetdir}"
 		buildoptions { "/utf-8" }
-		
-		postbuildcommands
+
+		files
 		{
-			("{COPYFILE} %{wks.location}/bin/" .. outputdir .. "/Heron/Heron.dll %{cfg.targetdir}")
+			"%{prj.location}/**.rc",
+			"vendor/imgui/backends/imgui_impl_win32.cpp",
+			"vendor/imgui/backends/imgui_impl_dx11.cpp",
+		}
+
+		defines
+		{
+			"HRN_PLATFORM_WINDOWS",
+			"IMGUI_IMPL_WIN32",
+			"IMGUI_IMPL_DX11"
 		}
 
 		links
@@ -73,17 +80,52 @@ project "HeronGui"
 			"dxguid"
 		}
 
+		postbuildcommands
+		{
+			("{COPYFILE} %{wks.location}/bin/" .. outputdir .. "/Heron/Heron.dll %{cfg.targetdir}")
+		}
+
 	filter { "system:windows", "configurations:Debug" }
-        postbuildcommands {
-            -- PDB ONLY in Debug
-            ("{COPYFILE} %{wks.location}/bin/" .. outputdir .. "/Heron/Heron.pdb %{cfg.buildtarget.directory}")
-        }
-	
+		postbuildcommands
+		{
+			("{COPYFILE} %{wks.location}/bin/" .. outputdir .. "/Heron/Heron.pdb %{cfg.buildtarget.directory}")
+		}
+
+	filter "system:linux"
+		systemversion "latest"
+
+		postbuildcommands
+		{
+			("{COPYFILE} %{wks.location}/bin/" .. outputdir .. "/Heron/libHeron.so %{cfg.targetdir}")
+		}
+
+		files
+		{
+			"vendor/imgui/backends/imgui_impl_glfw.cpp",
+			"vendor/imgui/backends/imgui_impl_opengl3.cpp",
+		}
+
+		defines
+		{
+			"HRN_PLATFORM_LINUX",
+			"IMGUI_IMPL_GLFW",
+			"IMGUI_IMPL_OPENGL3"
+		}
+
+		pic "On"
+
+		links
+		{
+			"GL",
+			"X11",
+			"pthread",
+			"dl"
+		}
+
 	filter "configurations:Debug"
 		defines "HRN_DEBUG"
 		runtime "Debug"
 		symbols "on"
-
 
 	filter "configurations:Release"
 		defines "HRN_RELEASE"
@@ -96,3 +138,5 @@ project "HeronGui"
 		runtime "Release"
 		optimize "on"
 		symbols "off"
+
+	filter {}

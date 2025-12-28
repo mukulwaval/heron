@@ -29,11 +29,21 @@ project "Heron"
 			"HRN_BUILD_DLL"
 		}
 
+	filter "system:linux"
+		systemversion "latest"
+
+		defines
+		{
+			"HRN_PLATFORM_LINUX",
+			"HRN_BUILD_SO"
+		}
+
+		pic "On"
+
 	filter "configurations:Debug"
 		defines "HRN_DEBUG"
 		runtime "Debug"
 		symbols "on"
-
 
 	filter "configurations:Release"
 		defines "HRN_RELEASE"
@@ -46,3 +56,5 @@ project "Heron"
 		runtime "Release"
 		optimize "on"
 		symbols "off"
+
+	filter {}
