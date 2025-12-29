@@ -263,6 +263,22 @@ namespace Nodes {
 		}
 	};
 
+	struct NodeBinary {
+		int id;
+		int type; // 0 = Input, 1 = Hidden, 2 = Output, 3 = Activation, 4 = Neurons
+		float posX;
+		float posY;
+
+		// Node-specific data
+		int neurons;           // for HiddenLayerNode or NeuronsNode
+		int activationType;    // if you encode activation functions as ints
+	};
+
+	struct LinkBinary {
+		int fromId;
+		int toId;
+	};
+
 	struct NodeEditor : ImFlow::BaseNode
 	{
 		ImFlow::ImNodeFlow mINF;

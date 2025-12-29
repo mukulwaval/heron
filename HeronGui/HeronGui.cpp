@@ -1,4 +1,4 @@
-#define STB_IMAGE_IMPLEMENTATION
+﻿#define STB_IMAGE_IMPLEMENTATION
 
 #ifdef HRN_BUILD_DLL
 #error HRN_BUILD_DLL SHOULD NOT BE DEFINED IN HERONGUI
@@ -267,8 +267,13 @@ namespace HeronGui
 			ImGui::GetIO().ConfigDpiScaleViewports = true;
 		}
 
-		void OnStop() override {
-		}
+		void OnStop() override {}
+
+		std::atomic<bool> training = false;
+		std::atomic<bool> trainingDone = false;
+
+		std::mutex trainingLogMutex;
+		std::vector<std::string> trainingLogs;
 
 		void OnFrame(float deltaTime) override
 		{
@@ -387,96 +392,100 @@ namespace HeronGui
 						ImGui::End();
 					}
 
-					// ---------- Build + Console logging ----------
-					if (buildRequested && model)
+					if (buildRequested && model && !training)
 					{
 						buildRequested = false;
+						training = true;
+						trainingDone = false;
 
-						// Console logging
-						char buf[256];
+						// Make local copies of everything the thread will need
+						std::string savedPath = modelPath;
+						std::vector<size_t> savedLayers = model->layers;
 
-						snprintf(buf, sizeof(buf),
-							"[BUILD] Path: %s",
-							modelPath);
-						consoleLogs.emplace_back(buf);
-						printf("%s\n", buf);
+						std::vector<
+							std::vector<float>(*)(const std::vector<float>&)
+						> savedActivations;
+						savedActivations.reserve(model->activations.size() - 1);
+						for (size_t i = 1; i < model->activations.size(); ++i)
+							savedActivations.push_back(model->activations[i].fn);
 
-						snprintf(buf, sizeof(buf),
-							"[BUILD] Layers: %zu",
-							model->layers.size());
-						consoleLogs.emplace_back(buf);
-						printf("%s\n", buf);
+						int savedIters = iters;
+						float savedLr = lr;
 
+						// Launch thread with *copies*, not references
+						std::thread([this,savedPath,
+							savedLayers,
+							savedActivations,
+							savedIters,
+							savedLr]()
+							{
+								auto log = [&](const std::string& msg)
+									{
+										std::lock_guard lock(trainingLogMutex);
+										trainingLogs.push_back(msg);
+									};
 
-						// Load dataset
-						Heron::Loader loader("datasets");
+								log("[BUILD] Starting training in the background...");
+								log("[BUILD] Path: " + savedPath);
 
-						std::vector<std::vector<float>> X;
-						std::vector<uint8_t> Y;
+								// Load dataset
+								Heron::Loader loader("datasets");
+								if (!loader.load("train") || loader.size() == 0)
+								{
+									log("[ERROR] Failed to load training dataset");
+									training = false;
+									trainingDone = true;
+									return;
+								}
 
-						if (!loader.load("train"))
-						{
-							consoleLogs.emplace_back("[ERROR] Failed to load training dataset");
-							printf("[ERROR] Failed to load training dataset\n");
-							return;
-						}
+								std::vector<std::vector<float>> X;
+								std::vector<uint8_t> Y;
+								X.reserve(loader.size());
+								Y.reserve(loader.size());
 
-						X.reserve(loader.size());
-						Y.reserve(loader.size());
+								for (size_t i = 0; i < loader.size(); ++i) {
+									X.push_back(loader.get_image(i));
+									Y.push_back(loader.get_label(i));
+								}
 
-						for (size_t i = 0; i < loader.size(); ++i)
-						{
-							X.push_back(loader.get_image(i));
-							Y.push_back(loader.get_label(i));
-						}
+								if (savedLayers.size() < 2 ||
+									savedActivations.size() != savedLayers.size() - 1)
+								{
+									log("[ERROR] Invalid model shape");
+									training = false;
+									trainingDone = true;
+									return;
+								}
 
-						// Build network from node graph
-						std::vector<size_t> layer_sizes;
-						std::vector<std::vector<float>(*)(const std::vector<float>&)> activations;
+								log("[BUILD] Training network...");
+								Heron::Network net(savedLayers, savedActivations);
+								Heron::Trainer::gradient_descent(net, X, Y, savedLr, savedIters);
 
-						// layers come straight from graph
-						for (size_t l : model->layers)
-							layer_sizes.push_back(l);
+								net.save_model(savedPath);
+								log("[BUILD] Model trained & saved.");
 
-						// activations: skip input layer
-						for (size_t i = 1; i < model->activations.size(); i++) // skip index 0.
-						{
-							activations.push_back(model->activations[i].fn);
-						}
+								training = false;
+								trainingDone = true;
 
-						// sanity check
-						if (layer_sizes.size() < 2)
-						{
-							consoleLogs.emplace_back("[ERROR] Model must have at least 2 layers");
-							printf("[ERROR] Model must have at least 2 layers\n");
-							return;
-						}
-
-						if (activations.size() != layer_sizes.size() - 1)
-						{
-							consoleLogs.emplace_back("[ERROR] Activation count mismatch");
-							printf("[ERROR] Activation count mismatch\n");
-							return;
-						}
-
-						// Train
-						Heron::Network net(layer_sizes, activations);
-						Heron::Trainer::gradient_descent(net, X, Y, lr, iters);
-
-						// Save
-						net.save_model(modelPath);
-
-						consoleLogs.emplace_back("[BUILD] Model trained & saved");
-						printf("[BUILD] Model trained & saved\n");
+							}).detach(); // detach so it runs independently
 					}
+
 
 					// ---------- Console Window ----------
 					ImGui::PushFont(BoldItalic);
 					ImGui::Begin("Console");
 					ImGui::PopFont();
-
-					for (const auto& line : consoleLogs)
-						ImGui::TextUnformatted(line.c_str());
+					{
+						std::lock_guard lock(trainingLogMutex);
+						for (auto& line : trainingLogs)
+							ImGui::TextUnformatted(line.c_str());
+					}
+					if (training) {
+						ImGui::Text("Status: Training…");
+					}
+					else if (trainingDone) {
+						ImGui::Text("Status: Done!");
+					}
 
 					if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY())
 						ImGui::SetScrollHereY(1.0f);
