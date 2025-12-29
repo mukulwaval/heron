@@ -18,6 +18,9 @@ project "HeronGui"
 		"%{prj.location}/source/config.h",
 		"%{prj.location}/source/application.cpp",
 
+		"%{prj.location}/utilities/**.cpp",
+		"%{prj.location}/utilities/**.h",
+
 		-- ImGui core
 		"vendor/imgui/imgui.cpp",
 		"vendor/imgui/imgui_draw.cpp",
@@ -48,6 +51,7 @@ project "HeronGui"
 		"%{IncludeDir.ImGui}/backends",
 
 		"%{wks.location}/Heron/include",
+		"%{wks.location}/Heron/utilities",
 		"%{wks.location}/HeronGui/vendor/ImNodeFlow/include",
 		"%{wks.location}/HeronGui/vendor/fmt/include",
 		"%{wks.location}/HeronGui/vendor/glad/include"
