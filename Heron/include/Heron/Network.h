@@ -5,10 +5,16 @@
 #include <unordered_map>
 
 #include "Activations.h"
-#include "Heron/Core.h"
+#include "Core.h"
 
 namespace Heron
 {
+	struct ActivationEntry {
+		ActFn fn;
+		ActFn deriv;
+		const char* name;
+	};
+
 	class HERON_API Network {
 	public:
 		// sizes: [input, h1, h2, ..., output]

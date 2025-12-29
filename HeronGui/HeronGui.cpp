@@ -1,12 +1,22 @@
 #define STB_IMAGE_IMPLEMENTATION
 
+#ifdef HRN_BUILD_DLL
+#error HRN_BUILD_DLL SHOULD NOT BE DEFINED IN HERONGUI
+#endif
+
 #include <ImNodeFlow.h>
 #include <imgui.h>
 #include <imgui_internal.h>
 #include <memory>
+#include <atomic>
+#include <mutex>
 
 #include "application.h"
 #include "source/platform.h"
+
+#include <Heron/Network.h>
+#include <Heron/Trainer.h>
+#include <Heron/Loader.h>
 
 #include "utilities/nodes.h"
 #include "utilities/components.h"
@@ -260,28 +270,221 @@ namespace HeronGui
 		void OnStop() override {
 		}
 
-		void OnFrame(float deltaTime) override {
-			Components::Dockspace([&]() {
-				ImGui::Begin("Node Editor Demo");
+		void OnFrame(float deltaTime) override
+		{
+			// --- persistent UI state ---
+			static char modelPath[256] = "model.heron";
+			static bool buildRequested = false;
+			static std::vector<std::string> consoleLogs;
 
-				if (!Editor) {
-					// Pass the current window pointer to the editor
-					Editor = std::make_unique<Nodes::NodeEditor>(500.0f, true, ImGui::GetCurrentWindow());
-				}
+			static int iters = 50;
+			static float lr = 0.01f;
 
-				if (Editor) {
-					ImVec2 editor_size = ImGui::GetContentRegionAvail();
-					Editor->set_size(editor_size);
-					Editor->draw();
-				}
+			Components::Dockspace([&]()
+				{
+					// ---------- Node Editor ----------
+					ImGui::PushFont(BoldItalic);
+					ImGui::Begin("Node Editor");
+					ImGui::PopFont();
 
-				ImGui::End();
-				ImGui::ShowDemoWindow();
+					if (!Editor)
+						Editor = std::make_unique<Nodes::NodeEditor>(500.0f);
+
+					if (Editor)
+					{
+						ImVec2 editor_size = ImGui::GetContentRegionAvail();
+						Editor->set_size(editor_size);
+						Editor->draw();
+					}
+
+					ImGui::End();
+
+					// ---------- Control Window ----------
+					ImGui::PushFont(BoldItalic);
+					ImGui::Begin("Control");
+					ImGui::PopFont();
+
+					ImGui::PushFont(MonoBold);
+					ImGui::Text("Model Path");
+					ImGui::PopFont();
+					ImGui::SetNextItemWidth(-1);
+					ImGui::InputText("##model_path", modelPath, sizeof(modelPath));
+
+					ImGui::Spacing();
+					ImGui::Separator();
+					ImGui::Spacing();
+
+					ImGui::PushFont(MonoBold);
+					ImGui::Text("Training Settings");
+					ImGui::PopFont();
+
+					// Iterations
+					ImGui::PushFont(MonoSemiBold);
+					ImGui::Text("Iterations");
+					ImGui::PopFont();
+					ImGui::SetNextItemWidth(-1);
+					ImGui::InputInt("##iters", &iters);
+					if (iters < 1) iters = 1; // clamp, no goofy values
+
+					ImGui::Spacing();
+
+					// Learning rate
+					ImGui::PushFont(MonoSemiBold);
+					ImGui::Text("Learning Rate");
+					ImGui::PopFont();
+					ImGui::SetNextItemWidth(-1);
+					ImGui::InputFloat("##lr", &lr, 0.001f, 0.01f, "%.6f");
+					if (lr <= 0.0f) lr = 0.0001f;
+
+					ImGui::Spacing();
+					ImGui::Separator();
+					ImGui::Spacing();
+
+					if (ImGui::Button("Build Model", ImVec2(-1, 0)))
+						buildRequested = true;
+
+					ImGui::End();
+
+					// ---------- Model Debug ----------
+					const Nodes::Model* model = nullptr;
+					if (Editor)
+						model = Editor->getModel();
+
+					if (model)
+					{
+						ImGui::PushFont(BoldItalic);
+						ImGui::Begin("Model Debug");
+						ImGui::PopFont();
+
+						ImGui::PushFont(MonoBold);
+						ImGui::Text("Layers:");
+						ImGui::PopFont();
+						for (size_t i = 0; i < model->layers.size(); ++i)
+						{
+							ImGui::BulletText(
+								"Layer %zu: %zu neurons",
+								i,
+								model->layers[i]
+							);
+						}
+
+						ImGui::Separator();
+
+						ImGui::PushFont(MonoBold);
+						ImGui::Text("Activations:");
+						ImGui::PopFont();
+						for (size_t i = 0; i < model->activations.size(); ++i)
+						{
+							ImGui::BulletText(
+								"Layer %zu: %s",
+								i,
+								model->activations[i].name
+								? model->activations[i].name
+								: "None"
+							);
+						}
+
+						ImGui::End();
+					}
+
+					// ---------- Build + Console logging ----------
+					if (buildRequested && model)
+					{
+						buildRequested = false;
+
+						// Console logging
+						char buf[256];
+
+						snprintf(buf, sizeof(buf),
+							"[BUILD] Path: %s",
+							modelPath);
+						consoleLogs.emplace_back(buf);
+						printf("%s\n", buf);
+
+						snprintf(buf, sizeof(buf),
+							"[BUILD] Layers: %zu",
+							model->layers.size());
+						consoleLogs.emplace_back(buf);
+						printf("%s\n", buf);
+
+
+						// Load dataset
+						Heron::Loader loader("datasets");
+
+						std::vector<std::vector<float>> X;
+						std::vector<uint8_t> Y;
+
+						if (!loader.load("train"))
+						{
+							consoleLogs.emplace_back("[ERROR] Failed to load training dataset");
+							printf("[ERROR] Failed to load training dataset\n");
+							return;
+						}
+
+						X.reserve(loader.size());
+						Y.reserve(loader.size());
+
+						for (size_t i = 0; i < loader.size(); ++i)
+						{
+							X.push_back(loader.get_image(i));
+							Y.push_back(loader.get_label(i));
+						}
+
+						// Build network from node graph
+						std::vector<size_t> layer_sizes;
+						std::vector<std::vector<float>(*)(const std::vector<float>&)> activations;
+
+						// layers come straight from graph
+						for (size_t l : model->layers)
+							layer_sizes.push_back(l);
+
+						// activations: skip input layer
+						for (size_t i = 1; i < model->activations.size(); i++) // skip index 0.
+						{
+							activations.push_back(model->activations[i].fn);
+						}
+
+						// sanity check
+						if (layer_sizes.size() < 2)
+						{
+							consoleLogs.emplace_back("[ERROR] Model must have at least 2 layers");
+							printf("[ERROR] Model must have at least 2 layers\n");
+							return;
+						}
+
+						if (activations.size() != layer_sizes.size() - 1)
+						{
+							consoleLogs.emplace_back("[ERROR] Activation count mismatch");
+							printf("[ERROR] Activation count mismatch\n");
+							return;
+						}
+
+						// Train
+						Heron::Network net(layer_sizes, activations);
+						Heron::Trainer::gradient_descent(net, X, Y, lr, iters);
+
+						// Save
+						net.save_model(modelPath);
+
+						consoleLogs.emplace_back("[BUILD] Model trained & saved");
+						printf("[BUILD] Model trained & saved\n");
+					}
+
+					// ---------- Console Window ----------
+					ImGui::PushFont(BoldItalic);
+					ImGui::Begin("Console");
+					ImGui::PopFont();
+
+					for (const auto& line : consoleLogs)
+						ImGui::TextUnformatted(line.c_str());
+
+					if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY())
+						ImGui::SetScrollHereY(1.0f);
+
+					ImGui::End();
+
 				});
-
-			ImGui::Begin("Test");
-			ImGui::Text("If you see this, we good");
-			ImGui::End();
+			ImGui::ShowDemoWindow();
 		}
 	};
 }

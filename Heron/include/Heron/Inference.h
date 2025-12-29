@@ -8,11 +8,7 @@ namespace Heron {
 	class HERON_API Inference {
 	public:
 		// Returns the predicted class for a single input
-		static int make_prediction(const Heron::Network& net, const std::vector<float>& X) {
-			std::vector<std::vector<float>> Z, A;
-			net.predict(X, Z, A);
-			return argmax(A.back()); // last layer activation
-		}
+		static int make_prediction(const Heron::Network& net, const std::vector<float>& X);
 
 		// Test a sample and optionally save it to disk
 		static void test_prediction(
@@ -21,16 +17,7 @@ namespace Heron {
 			const std::vector<uint8_t>& Y,
 			size_t index,
 			const std::string& out_file = "sample.bmp"
-		) {
-			const auto& image = X[index];
-			int prediction = make_prediction(net, image);
-
-			std::cout << "Prediction: " << prediction << "\n";
-			std::cout << "Label:      " << static_cast<int>(Y[index]) << "\n";
-
-			FileIO::write_28x28_bmp(image, out_file);
-			std::cout << "Saved image to " << out_file << "\n";
-		}
+		);
 
 	private:
 		static int argmax(const std::vector<float>& v) {

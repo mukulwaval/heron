@@ -3,186 +3,412 @@
 #include <imgui.h>
 #include <imgui_internal.h>
 #include <vector>
+#include <Heron/Activations.h>
 
 namespace Nodes {
-	class SimpleSum : public ImFlow::BaseNode {
-	public:
-		SimpleSum() {
-			setTitle("Simple sum");
-			setStyle(ImFlow::NodeStyle::green());
-			ImFlow::BaseNode::addIN<int>("In", 0, ImFlow::ConnectionFilter::SameType());
-			ImFlow::BaseNode::addOUT<int>("Out", nullptr)->behaviour([this]() {
-				return getInVal<int>("In") + m_valB;
-				});
+	struct ActivationEntry {
+		ActFn fn;
+		ActFn deriv;
+		const char* name;
+	};
+
+	static const ActivationEntry Activations[] = {
+		{ nullptr, nullptr, "None"},
+		{ Heron::Activation::relu,    Heron::Activation::relu_deriv, "ReLU" },
+		{ Heron::Activation::softmax, nullptr,                "Softmax" },
+	};
+
+	struct Model {
+		std::vector<size_t> layers;
+		std::vector<ActivationEntry> activations;
+	};
+
+	struct InputLayerNode : public ImFlow::BaseNode {
+		int neurons = 28 * 28;
+		Model model;
+
+		InputLayerNode() {
+			setTitle("Input Layer");
+			setStyle([] {
+				ImFlow::NodeStyle s = *ImFlow::NodeStyle::green();
+				s.header_bg = IM_COL32(39, 84, 138, 255);
+				s.radius = 10.f;
+				return std::make_shared<ImFlow::NodeStyle>(s);
+				}());
+
+			addOUT<Model>("", [] {
+				auto s = *ImFlow::PinStyle::blue();
+				s.socket_shape = 0;
+				s.color = IM_COL32(39, 84, 138, 255);
+				return std::make_shared<ImFlow::PinStyle>(s);
+				}())
+				->behaviour([this]() { return model; });
+		}
+
+		void draw() override {
+			model.layers.clear();
+			model.activations.clear();
+
+			if (neurons > 0)
+				model.layers.push_back(static_cast<size_t>(neurons));
+
+			model.activations.push_back(Activations[0]);
+
+			ImGui::BeginDisabled();
+
+			ImGui::SetNextItemWidth(100.f);
+			ImGui::DragInt("##neurons", &neurons);
+
+			ImGui::SetNextItemWidth(100.f);
+			int selected = 0; // None
+			const char* preview = Activations[selected].name;
+			if (ImGui::BeginCombo("##activation_combo", preview)) {
+				for (int i = 0; i < IM_ARRAYSIZE(Activations); i++) {
+					bool isSelected = (selected == i);
+					if (ImGui::Selectable(Activations[i].name, isSelected))
+						selected = i;
+
+					if (isSelected)
+						ImGui::SetItemDefaultFocus();
+				}
+				ImGui::EndCombo();
+			}
+			ImGui::EndDisabled();
+		}
+	};
+
+	struct OutputLayerNode : public ImFlow::BaseNode {
+		Model model;
+		int neurons = 10;
+
+		OutputLayerNode() {
+			setTitle("Output Layer");
+			setStyle([] {
+				ImFlow::NodeStyle s = *ImFlow::NodeStyle::green();
+				s.header_bg = IM_COL32(39, 84, 138, 255);
+				s.radius = 10.f;
+				return std::make_shared<ImFlow::NodeStyle>(s);
+				}());
+
+			addIN<Model>("", Model{},
+				ImFlow::ConnectionFilter::SameType(),
+				[] {
+					auto s = *ImFlow::PinStyle::blue();
+					s.socket_shape = 0;
+					s.color = IM_COL32(39, 84, 138, 255);
+					return std::make_shared<ImFlow::PinStyle>(s);
+				}());
+		}
+
+		void draw() override {
+			model.layers.clear();
+			model.activations.clear();
+
+			model = getInVal<Model>("");
+
+			if (neurons > 0)
+				model.layers.push_back(static_cast<size_t>(neurons));
+
+			model.activations.push_back(Activations[2]);
+
+			ImGui::BeginDisabled();
+
+			ImGui::SetNextItemWidth(100.f);
+			ImGui::DragInt("##neurons", &neurons);
+
+			ImGui::SetNextItemWidth(100.f);
+			int selected = 2; // Softmax
+			const char* preview = Activations[selected].name;
+			if (ImGui::BeginCombo("##activation_combo", preview)) {
+				for (int i = 0; i < IM_ARRAYSIZE(Activations); i++) {
+					bool isSelected = (selected == i);
+					if (ImGui::Selectable(Activations[i].name, isSelected))
+						selected = i;
+
+					if (isSelected)
+						ImGui::SetItemDefaultFocus();
+				}
+				ImGui::EndCombo();
+			}
+			ImGui::EndDisabled();
+		}
+	};
+
+	struct HiddenLayerNode : public ImFlow::BaseNode {
+		Model model;
+		int neurons = 0;
+
+		HiddenLayerNode() {
+			setTitle("Hidden Layer");
+			setStyle([] {
+				ImFlow::NodeStyle s = *ImFlow::NodeStyle::cyan();
+				s.header_bg = IM_COL32(71, 142, 173, 255);
+				s.radius = 10.f;
+				return std::make_shared<ImFlow::NodeStyle>(s);
+				}());
+
+			addIN<Model>("Previous Layer", Model{},
+				ImFlow::ConnectionFilter::SameType(),
+				[] {
+					auto s = *ImFlow::PinStyle::blue();
+					s.socket_shape = 0;
+					s.color = IM_COL32(39, 84, 138, 255);
+					return std::make_shared<ImFlow::PinStyle>(s);
+				}());
+
+			addIN<int>("Neurons", 0,
+				ImFlow::ConnectionFilter::SameType(),
+				[] {
+					auto s = *ImFlow::PinStyle::red();
+					s.socket_shape = 4;
+					s.color = IM_COL32(184, 92, 56, 255);
+					return std::make_shared<ImFlow::PinStyle>(s);
+				}());
+
+			addIN<ActivationEntry>(
+				"Activation",
+				Activations[0],
+				ImFlow::ConnectionFilter::SameType(),
+				[] {
+					auto s = *ImFlow::PinStyle::red();
+					s.socket_shape = 3;
+					s.color = IM_COL32(191, 90, 90, 255);
+					return std::make_shared<ImFlow::PinStyle>(s);
+				}()
+					);
+
+			addOUT<Model>("", [] {
+				auto s = *ImFlow::PinStyle::blue();
+				s.socket_shape = 0;
+				s.color = IM_COL32(39, 84, 138, 255);
+				return std::make_shared<ImFlow::PinStyle>(s);
+				}())
+				->behaviour([this]() { return model; });
+		}
+
+		void draw() override {
+			neurons = getInVal<int>("Neurons");
+
+			model.layers.clear();
+			model.activations.clear();
+
+			model = getInVal<Model>("Previous Layer");
+
+			if (neurons > 0)
+				model.layers.push_back(static_cast<size_t>(neurons));
+
+			model.activations.push_back(getInVal<ActivationEntry>("Activation"));
+		}
+	};
+
+	struct ActivationNode : public ImFlow::BaseNode {
+		int selected = 0; // index into Activations
+
+		ActivationNode() {
+			setTitle("Activation");
+			setStyle(ImFlow::NodeStyle::red());
+
+			addOUT<ActivationEntry>("",
+				[] {
+					auto s = *ImFlow::PinStyle::red();
+					s.socket_shape = 3;
+					s.color = IM_COL32(191, 90, 90, 255);
+					return std::make_shared<ImFlow::PinStyle>(s);
+				}()
+					)->behaviour([this]() { return Activations[selected]; });
 		}
 
 		void draw() override {
 			ImGui::SetNextItemWidth(100.f);
-			ImGui::InputInt("##ValB", &m_valB);
-		}
 
-	private:
-		int m_valB = 0;
-	};
+			const char* preview = Activations[selected].name;
+			if (ImGui::BeginCombo("##activation_combo", preview)) {
+				for (int i = 0; i < IM_ARRAYSIZE(Activations); i++) {
+					bool isSelected = (selected == i);
+					if (ImGui::Selectable(Activations[i].name, isSelected))
+						selected = i;
 
-	class CollapsingNode : public ImFlow::BaseNode {
-	public:
-		CollapsingNode() {
-			setTitle("Collapsing node");
-			setStyle(ImFlow::NodeStyle::red());
-			ImFlow::BaseNode::addIN<int>("A", 0, ImFlow::ConnectionFilter::SameType());
-			ImFlow::BaseNode::addIN<int>("B", 0, ImFlow::ConnectionFilter::SameType());
-			ImFlow::BaseNode::addOUT<int>("Out", nullptr)->behaviour([this]() {
-				return getInVal<int>("A") + getInVal<int>("B");
-				});
-		}
-
-		void draw() override {
-			if (ImFlow::BaseNode::isSelected()) {
-				ImGui::SetNextItemWidth(100.f);
-				ImGui::Text("You can only see me when the node is selected!");
+					if (isSelected)
+						ImGui::SetItemDefaultFocus();
+				}
+				ImGui::EndCombo();
 			}
 		}
 	};
 
-	class ResultNode : public ImFlow::BaseNode {
-	public:
-		ResultNode() {
-			setTitle("Result node");
-			setStyle(ImFlow::NodeStyle::brown());
-			ImFlow::BaseNode::addIN<int>("A", 0, ImFlow::ConnectionFilter::SameType());
-			ImFlow::BaseNode::addIN<int>("B", 0, ImFlow::ConnectionFilter::SameType());
+	struct NeuronsNode : public ImFlow::BaseNode {
+		int neurons = 0;
+
+		NeuronsNode() {
+			setTitle("Neurons");
+			setStyle([] {
+				ImFlow::NodeStyle s = *ImFlow::NodeStyle::green();
+				s.header_bg = IM_COL32(184, 92, 56, 255);
+				s.radius = 10.f;
+				return std::make_shared<ImFlow::NodeStyle>(s);
+				}());
+
+			addOUT<int>("",
+				[] {
+					auto s = *ImFlow::PinStyle::red();
+					s.socket_shape = 4;
+					s.color = IM_COL32(184, 92, 56, 255);
+					return std::make_shared<ImFlow::PinStyle>(s);
+				}())->behaviour([this]() { return neurons; });
 		}
 
 		void draw() override {
-			ImGui::Text("Result: %d", getInVal<int>("A") + getInVal<int>("B"));
+			ImGui::SetNextItemWidth(70.f);
+			ImGui::DragInt("##neurons", &neurons);
 		}
 	};
 
-    struct NodeEditor : ImFlow::BaseNode
-    {
-        ImFlow::ImNodeFlow mINF;
-        ImGuiWindow* mWindow; // store window reference
-        ImFlow::BaseNode* contextNode = nullptr;
-        ImVec2 openPopupMousePos{};
-        ImVec2 mSize{};
+	struct NodeEditor : ImFlow::BaseNode
+	{
+		ImFlow::ImNodeFlow mINF;
+		ImFlow::BaseNode* contextNode = nullptr;
+		ImVec2 openPopupMousePos{};
+		ImVec2 mSize{};
+		Model mModel;
 
-        NodeEditor(float size, bool seedGraph, ImGuiWindow* editorWindow)
-            : ImFlow::BaseNode(), mWindow(editorWindow)
-        {
-            mSize = { size, size };
-            mINF.setSize({ size, size });
+		NodeEditor(float size)
+			: ImFlow::BaseNode()
+		{
+			clear();
+		}
 
-            // Setup the "link dropped" popup
-            mINF.droppedLinkPopUpContent(
-                [this](ImFlow::Pin* fromPin)
-                {
-                    linkDropped(fromPin);
-                }
-            );
+		void set_size(ImVec2 size)
+		{
+			mINF.setSize(size);
+			mSize = size;
+		}
 
-            if (seedGraph)
-            {
-                mINF.addNode<SimpleSum>({ 40, 40 });
-                mINF.addNode<SimpleSum>({ 40, 150 });
-                mINF.addNode<ResultNode>({ 250, 80 });
-                mINF.addNode<CollapsingNode>({ 300, 300 });
-            }
-        }
+		void draw() override
+		{
+			mINF.update();
+			handleContextMenus();
+			updateModelFromGraph();
+		}
 
-        void set_size(ImVec2 size)
-        {
-            mINF.setSize(size);
-            mSize = size;
-        }
+		const Model* getModel()
+		{
+			const auto& nodes = mINF.getNodes();
 
-        void draw() override
-        {
-            mINF.update();
-            handleContextMenus();
-        }
+			for (const auto& [uid, node] : nodes)
+			{
+				if (auto* out = dynamic_cast<OutputLayerNode*>(node.get()))
+				{
+					return &out->model;
+				}
+			}
+			return nullptr;
+		}
 
-    private:
-        void handleContextMenus()
-        {
-            // Check if mouse is over the last ImGui item (the node editor canvas)
-            if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup) &&
-                ImGui::IsMouseClicked(ImGuiMouseButton_Right))
-            {
-                openPopupMousePos = ImGui::GetMousePos();
-                ImGui::OpenPopup("Background Context Menu");
-            }
+	private:
+		void handleContextMenus()
+		{
+			// Check if mouse is over the last ImGui item (the node editor canvas)
+			if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup) &&
+				ImGui::IsMouseClicked(ImGuiMouseButton_Right))
+			{
+				openPopupMousePos = ImGui::GetMousePos();
+				ImGui::OpenPopup("Background Context Menu");
+			}
 
-            drawBackgroundContextMenu();
-        }
+			drawBackgroundContextMenu();
+		}
 
-        void drawBackgroundContextMenu()
-        {
-            if (ImGui::BeginPopup("Background Context Menu", ImGuiWindowFlags_NoMove))
-            {
-                ImVec2 spawnPos = openPopupMousePos;
+		void drawBackgroundContextMenu()
+		{
+			if (ImGui::BeginPopup("Background Context Menu", ImGuiWindowFlags_NoMove))
+			{
+				if (ImGui::MenuItem("Add Input Layer"))
+					mINF.addNode<InputLayerNode>(mINF.screen2grid(openPopupMousePos));
 
-                if (ImGui::MenuItem("Add Simple Sum"))
-                    mINF.addNode<SimpleSum>(mINF.screen2grid(spawnPos));
+				if (ImGui::MenuItem("Add Hidden Layer"))
+					mINF.addNode<HiddenLayerNode>(mINF.screen2grid(openPopupMousePos));
 
-                if (ImGui::MenuItem("Add Result Node"))
-                    mINF.addNode<ResultNode>(mINF.screen2grid(spawnPos));
+				if (ImGui::MenuItem("Add Output Layer"))
+					mINF.addNode<OutputLayerNode>(mINF.screen2grid(openPopupMousePos));
 
-                if (ImGui::MenuItem("Add Collapsing Node"))
-                    mINF.addNode<CollapsingNode>(mINF.screen2grid(spawnPos));
+				if (ImGui::MenuItem("Add Activation Functions"))
+					mINF.addNode<ActivationNode>(mINF.screen2grid(openPopupMousePos));
 
-                ImGui::Separator();
+				if (ImGui::MenuItem("Add Neurons"))
+					mINF.addNode<NeuronsNode>(mINF.screen2grid(openPopupMousePos));
 
-                if (ImGui::MenuItem("Clear All"))
-                    clear();
+				ImGui::Separator();
 
-                ImGui::EndPopup();
-            }
-        }
+				if (ImGui::MenuItem("Clear All"))
+					clear();
 
-        void linkDropped(ImFlow::Pin* droppedFrom)
-        {
-            if (!droppedFrom)
-                return;
+				ImGui::EndPopup();
+			}
+		}
 
-            if (!ImGui::IsPopupOpen("Link To Pin"))
-                ImGui::OpenPopup("Link To Pin");
+		void linkDropped(ImFlow::Pin* droppedFrom)
+		{
+			if (!droppedFrom)
+				return;
 
-            if (ImGui::BeginPopup("Link To Pin", ImGuiWindowFlags_NoMove))
-            {
-                ImVec2 spawnPos = ImGui::GetMousePos();
+			if (!ImGui::IsPopupOpen("Link To Pin"))
+				ImGui::OpenPopup("Link To Pin");
 
-                if (ImGui::MenuItem("Add Simple Sum"))
-                    mINF.addNode<SimpleSum>(mINF.screen2grid(spawnPos));
+			if (ImGui::BeginPopup("Link To Pin", ImGuiWindowFlags_NoMove))
+			{
+				if (ImGui::MenuItem("Input Layer"))
+					mINF.addNode<InputLayerNode>(mINF.screen2grid(openPopupMousePos));
 
-                if (ImGui::MenuItem("Add Result Node"))
-                    mINF.addNode<ResultNode>(mINF.screen2grid(spawnPos));
+				if (ImGui::MenuItem("Hidden Layer"))
+					mINF.addNode<HiddenLayerNode>(mINF.screen2grid(openPopupMousePos));
 
-                if (ImGui::MenuItem("Add Collapsing Node"))
-                    mINF.addNode<CollapsingNode>(mINF.screen2grid(spawnPos));
+				if (ImGui::MenuItem("Output Layer"))
+					mINF.addNode<OutputLayerNode>(mINF.screen2grid(openPopupMousePos));
 
-                ImGui::Separator();
+				if (ImGui::MenuItem("Activation Functions"))
+					mINF.addNode<ActivationNode>(mINF.screen2grid(openPopupMousePos));
 
-                if (ImGui::MenuItem("Clear All"))
-                    clear();
+				if (ImGui::MenuItem("Neurons"))
+					mINF.addNode<NeuronsNode>(mINF.screen2grid(openPopupMousePos));
 
-                ImGui::EndPopup();
-            }
-        }
+				ImGui::Separator();
 
-        void clear()
-        {
-            // Clear all nodes and links
-            mINF = ImFlow::ImNodeFlow();
-            mINF.setSize(mSize);
+				if (ImGui::MenuItem("Clear All"))
+					clear();
 
-            // Setup the "link dropped" popup
-            mINF.droppedLinkPopUpContent(
-                [this](ImFlow::Pin* fromPin)
-                {
-                    linkDropped(fromPin);
-                }
-            );
-        }
-    };
+				ImGui::EndPopup();
+			}
+		}
+
+		void clear()
+		{
+			// Clear all nodes and links
+			mINF = ImFlow::ImNodeFlow();
+			mINF.setSize(mSize);
+
+			// Setup the "link dropped" popup
+			mINF.droppedLinkPopUpContent(
+				[this](ImFlow::Pin* fromPin)
+				{
+					linkDropped(fromPin);
+				}
+			);
+		}
+
+		void updateModelFromGraph()
+		{
+			mModel = {}; // reset
+
+			const auto& nodes = mINF.getNodes();
+
+			for (const auto& [uid, node] : nodes)
+			{
+				if (auto* out = dynamic_cast<OutputLayerNode*>(node.get()))
+				{
+					mModel = out->model;
+					break;
+				}
+			}
+		}
+	};
 }

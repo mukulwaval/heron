@@ -7,12 +7,6 @@
 
 namespace Heron
 {
-	struct ActivationEntry {
-		ActFn fn;
-		ActFn deriv;
-		const char* name;
-	};
-
 	static const ActivationEntry ACT_TABLE[] = {
 		{ Activation::relu,    Activation::relu_deriv, "relu" },
 		{ Activation::softmax, nullptr,                "softmax" },

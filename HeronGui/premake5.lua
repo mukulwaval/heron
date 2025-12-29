@@ -1,11 +1,13 @@
 project "HeronGui"
 	kind "WindowedApp"
 	language "C++"
-	cppdialect "C++17"
+	cppdialect "C++23"
 	staticruntime "off"
 
 	targetdir ("%{wks.location}/bin/" .. outputdir .. "/%{prj.name}")
 	objdir ("%{wks.location}/bin-int/" .. outputdir .. "/%{prj.name}")
+
+	undefines { "HRN_BUILD_DLL" }
 
 	files
 	{
@@ -57,7 +59,12 @@ project "HeronGui"
 		"%{wks.location}/HeronGui/vendor/glad/include"
 	}
 
+	libdirs {
+        "%{wks.location}/bin/" .. outputdir .. "/Heron"  -- point to Heron lib output
+    }
+
 	links { "Heron" }
+	dependson { "Heron" }
 
 	postbuildcommands
 	{
