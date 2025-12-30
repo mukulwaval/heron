@@ -53,7 +53,8 @@ namespace Heron
 			}
 
 			float acc = get_accuracy(predictions, Y);
-			callback(iter, acc);
+			if (callback)
+				callback(iter, acc);
 		}
 	}
 } // namespace Heron

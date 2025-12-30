@@ -1,7 +1,6 @@
 #pragma once
 
 // For use by Heron applications
-#include "Heron/Application.h"
 #include "Heron/Core.h"
 #include "Heron/FileIO.h"
 #include "Heron/Inference.h"

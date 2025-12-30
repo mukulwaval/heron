@@ -20,7 +20,7 @@ namespace Heron
 			const std::vector<uint8_t>& Y,
 			float alpha,
 			int iterations,
-			std::function<void(int, float)> callback
+			std::function<void(int, float)> callback = nullptr
 		);
 	};
 } // namespace Heron
