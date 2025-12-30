@@ -40,7 +40,7 @@ class HERON_API Network {
   void predict(const std::vector<float>& input,
                std::vector<std::vector<float>>& Z_out,
                std::vector<std::vector<float>>& A_out) const;
-
+  size_t layer_count() const;
  private:
   // weights[i] : layer i -> i+1
   std::vector<std::vector<std::vector<float>>> weights;

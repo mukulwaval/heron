@@ -16,7 +16,8 @@ struct ActivationEntry {
 static const ActivationEntry Activations[] = {
     {nullptr, nullptr, "None"},
     {Heron::Activation::relu, Heron::Activation::relu_deriv, "ReLU"},
-    {Heron::Activation::softmax, nullptr, "Softmax"},
+    //{Heron::Activation::tanh, Heron::Activation::tanh_deriv, "TANH"},
+    {Heron::Activation::softmax, nullptr, "Softmax"}, // update index in OutputLayerNode
 };
 
 struct Model {
@@ -105,7 +106,7 @@ struct OutputLayerNode : public ImFlow::BaseNode {
 
     if (neurons > 0) model.layers.push_back(static_cast<size_t>(neurons));
 
-    model.activations.push_back(Activations[2]);
+    model.activations.push_back(Activations[2]); // softmax
 
     ImGui::BeginDisabled();
 

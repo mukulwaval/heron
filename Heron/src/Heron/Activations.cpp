@@ -5,40 +5,73 @@
 #include <vector>
 
 namespace Heron {
-std::vector<float> Activation::relu(const std::vector<float>& Z) {
-  // Initialize
-  std::vector<float> A(Z.size());
+    std::vector<float> Activation::relu(const std::vector<float>& Z)
+    {
+        const size_t n = Z.size();
+        std::vector<float> A;
+        A.resize(n);
 
-  // For each element a, return ReLU(a)
-  for (size_t i = 0; i < Z.size(); ++i) A[i] = std::max(0.0f, Z[i]);
+        for (size_t i = 0; i < n; ++i)
+            A[i] = Z[i] > 0.0f ? Z[i] : 0.0f;
 
-  return A;
-}
+        return A;
+    }
 
-std::vector<float> Activation::relu_deriv(const std::vector<float>& Z) {
-  // Initialize
-  std::vector<float> A(Z.size());
+    std::vector<float> Activation::relu_deriv(const std::vector<float>& Z)
+    {
+        const size_t n = Z.size();
+        std::vector<float> A;
+        A.resize(n);
 
-  // For each element a, return ReLU'(a)
-  for (size_t i = 0; i < Z.size(); ++i) A[i] = Z[i] > 0 ? 1.0f : 0.0f;
+        for (size_t i = 0; i < n; ++i)
+            A[i] = Z[i] > 0.0f ? 1.0f : 0.0f;
 
-  return A;
-}
+        return A;
+    }
 
-std::vector<float> Activation::softmax(const std::vector<float>& Z) {
-  // Initialize output vector
-  std::vector<float> A(Z.size());
+    std::vector<float> Activation::tanh(const std::vector<float>& Z)
+    {
+        const size_t n = Z.size();
+        std::vector<float> A;
+        A.resize(n);
 
-  // Find max(x)
-  float max_val = *std::max_element(Z.begin(), Z.end());
+        for (size_t i = 0; i < n; ++i)
+            A[i] = std::tanh(Z[i]);
 
-  // Compute e^{z_i-max(z)}. (z_i-max(z) this is to keep values small.)
-  float sum = 0.0f;
-  for (float v : Z) sum += std::exp(v - max_val);
+        return A;
+    }
 
-  // 0 <= A[i] <= 1
-  for (size_t i = 0; i < Z.size(); ++i) A[i] = std::exp(Z[i] - max_val) / sum;
+    std::vector<float> Activation::tanh_deriv(const std::vector<float>& Z)
+    {
+        const size_t n = Z.size();
+        std::vector<float> A;
+        A.resize(n);
 
-  return A;
-}
-}  // namespace Heron
+        for (size_t i = 0; i < n; ++i) {
+            float t = std::tanh(Z[i]);
+            A[i] = 1.0f - t * t;   // tanh'(x) = 1 - tanh²(x)
+        }
+
+        return A;
+    }
+
+    std::vector<float> Activation::softmax(const std::vector<float>& Z)
+    {
+        const size_t n = Z.size();
+        std::vector<float> A;
+        A.resize(n);
+
+        float max_val = *std::max_element(Z.begin(), Z.end());
+
+        float sum = 0.0f;
+        for (size_t i = 0; i < n; ++i)
+            sum += std::exp(Z[i] - max_val);
+
+        const float inv_sum = 1.0f / sum;
+        for (size_t i = 0; i < n; ++i)
+            A[i] = std::exp(Z[i] - max_val) * inv_sum;
+
+        return A;
+    }
+
+} // namespace Heron
