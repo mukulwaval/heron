@@ -370,6 +370,7 @@ FodyWeavers.xsd
 *.vcxproj.user
 *.vcxproj.props
 *.vcxproj.targets
+Makefile
 
 # Build output
 bin/

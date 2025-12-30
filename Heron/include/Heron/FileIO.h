@@ -1,37 +1,39 @@
 #pragma once
+#include <cstdint>
 #include <string>
 #include <vector>
+
 #include "Core.h"
 
 #pragma pack(push, 1)
 struct BMPFileHeader {
-	uint16_t bfType;
-	uint32_t bfSize;
-	uint16_t bfReserved1;
-	uint16_t bfReserved2;
-	uint32_t bfOffBits;
+  uint16_t bfType;
+  uint32_t bfSize;
+  uint16_t bfReserved1;
+  uint16_t bfReserved2;
+  uint32_t bfOffBits;
 };
 
 struct BMPInfoHeader {
-	uint32_t biSize;
-	int32_t  biWidth;
-	int32_t  biHeight;
-	uint16_t biPlanes;
-	uint16_t biBitCount;
-	uint32_t biCompression;
-	uint32_t biSizeImage;
-	int32_t  biXPelsPerMeter;
-	int32_t  biYPelsPerMeter;
-	uint32_t biClrUsed;
-	uint32_t biClrImportant;
+  uint32_t biSize;
+  int32_t biWidth;
+  int32_t biHeight;
+  uint16_t biPlanes;
+  uint16_t biBitCount;
+  uint32_t biCompression;
+  uint32_t biSizeImage;
+  int32_t biXPelsPerMeter;
+  int32_t biYPelsPerMeter;
+  uint32_t biClrUsed;
+  uint32_t biClrImportant;
 };
 #pragma pack(pop)
 
-
 namespace Heron {
-	class HERON_API FileIO {
-	public:
-		static std::vector<float> read_28x28_bmp(const std::string& path);
-		static void write_28x28_bmp(const std::vector<float>& img, const std::string& path);
-	};
-} // namespace Heron
+class HERON_API FileIO {
+ public:
+  static std::vector<float> read_28x28_bmp(const std::string& path);
+  static void write_28x28_bmp(const std::vector<float>& img,
+                              const std::string& path);
+};
+}  // namespace Heron
