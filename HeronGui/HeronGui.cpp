@@ -267,7 +267,10 @@ struct MainEditor : public Application {
     ImGui::GetIO().ConfigDpiScaleViewports = true;
   }
 
-  void OnStop() override {}
+  void OnStop() override {
+      Close();
+      Quit();
+  }
 
   std::atomic<bool> training = false;
   std::atomic<bool> trainingDone = false;
