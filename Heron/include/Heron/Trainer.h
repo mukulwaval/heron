@@ -2,6 +2,7 @@
 #include "Network.h"
 #include "Core.h"
 #include <vector>
+#include <functional>
 
 namespace Heron 
 {
@@ -18,7 +19,8 @@ namespace Heron
 			const std::vector<std::vector<float>>& X,
 			const std::vector<uint8_t>& Y,
 			float alpha,
-			int iterations
+			int iterations,
+			std::function<void(int, float)> callback
 		);
 	};
 } // namespace Heron

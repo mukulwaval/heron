@@ -1,6 +1,7 @@
 #include "Heron/Trainer.h"
 #include <cstdint>
 #include <iostream>
+#include <functional>
 
 namespace Heron
 {
@@ -33,7 +34,8 @@ namespace Heron
 		const std::vector<std::vector<float>>& X,
 		const std::vector<uint8_t>& Y,
 		float alpha,
-		int iterations
+		int iterations,
+		std::function<void(int, float)> callback
 	) {
 		net.init_params();
 
@@ -51,7 +53,7 @@ namespace Heron
 			}
 
 			float acc = get_accuracy(predictions, Y);
-			std::cout << "Iteration " << iter << " | Accuracy: " << acc << "\n";
+			callback(iter, acc);
 		}
 	}
 } // namespace Heron

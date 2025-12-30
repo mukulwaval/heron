@@ -277,13 +277,21 @@ namespace HeronGui
 
 		void OnFrame(float deltaTime) override
 		{
-			// --- persistent UI state ---
+			// ---------- persistent UI state ----------
 			static char modelPath[256] = "model.heron";
 			static bool buildRequested = false;
-			static std::vector<std::string> consoleLogs;
 
 			static int iters = 50;
 			static float lr = 0.01f;
+
+			// ---- training progress ----
+			static std::mutex progressMutex;
+
+			static std::vector<float> accHistory;
+			static std::vector<int>   iterHistory;
+
+			static std::atomic<int>   currentIter = 0;
+			static std::atomic<float> currentAcc = 0.0f;
 
 			Components::Dockspace([&]()
 				{
@@ -297,14 +305,14 @@ namespace HeronGui
 
 					if (Editor)
 					{
-						ImVec2 editor_size = ImGui::GetContentRegionAvail();
-						Editor->set_size(editor_size);
+						ImVec2 size = ImGui::GetContentRegionAvail();
+						Editor->set_size(size);
 						Editor->draw();
 					}
 
 					ImGui::End();
 
-					// ---------- Control Window ----------
+					// ---------- Control ----------
 					ImGui::PushFont(BoldItalic);
 					ImGui::Begin("Control");
 					ImGui::PopFont();
@@ -323,20 +331,12 @@ namespace HeronGui
 					ImGui::Text("Training Settings");
 					ImGui::PopFont();
 
-					// Iterations
-					ImGui::PushFont(MonoSemiBold);
 					ImGui::Text("Iterations");
-					ImGui::PopFont();
 					ImGui::SetNextItemWidth(-1);
 					ImGui::InputInt("##iters", &iters);
-					if (iters < 1) iters = 1; // clamp, no goofy values
+					if (iters < 1) iters = 1;
 
-					ImGui::Spacing();
-
-					// Learning rate
-					ImGui::PushFont(MonoSemiBold);
 					ImGui::Text("Learning Rate");
-					ImGui::PopFont();
 					ImGui::SetNextItemWidth(-1);
 					ImGui::InputFloat("##lr", &lr, 0.001f, 0.01f, "%.6f");
 					if (lr <= 0.0f) lr = 0.0001f;
@@ -345,15 +345,25 @@ namespace HeronGui
 					ImGui::Separator();
 					ImGui::Spacing();
 
-					if (ImGui::Button("Build Model", ImVec2(-1, 0)))
+					if (!training && ImGui::Button("Build Model", ImVec2(-1, 0)))
 						buildRequested = true;
+
+					if (training)
+					{
+						ImGui::Spacing();
+						ImGui::TextColored(ImVec4(1, 1, 0, 1), "Training in progress...");
+					}
+
+					if (trainingDone)
+					{
+						ImGui::Spacing();
+						ImGui::TextColored(ImVec4(0, 1, 0, 1), "Training finished.");
+					}
 
 					ImGui::End();
 
 					// ---------- Model Debug ----------
-					const Nodes::Model* model = nullptr;
-					if (Editor)
-						model = Editor->getModel();
+					const Nodes::Model* model = Editor ? Editor->getModel() : nullptr;
 
 					if (model)
 					{
@@ -361,23 +371,12 @@ namespace HeronGui
 						ImGui::Begin("Model Debug");
 						ImGui::PopFont();
 
-						ImGui::PushFont(MonoBold);
 						ImGui::Text("Layers:");
-						ImGui::PopFont();
 						for (size_t i = 0; i < model->layers.size(); ++i)
-						{
-							ImGui::BulletText(
-								"Layer %zu: %zu neurons",
-								i,
-								model->layers[i]
-							);
-						}
+							ImGui::BulletText("Layer %zu: %zu neurons", i, model->layers[i]);
 
 						ImGui::Separator();
-
-						ImGui::PushFont(MonoBold);
 						ImGui::Text("Activations:");
-						ImGui::PopFont();
 						for (size_t i = 0; i < model->activations.size(); ++i)
 						{
 							ImGui::BulletText(
@@ -392,47 +391,55 @@ namespace HeronGui
 						ImGui::End();
 					}
 
+					// ---------- TRAINING THREAD ----------
 					if (buildRequested && model && !training)
 					{
 						buildRequested = false;
 						training = true;
 						trainingDone = false;
 
-						// Make local copies of everything the thread will need
-						std::string savedPath = modelPath;
-						std::vector<size_t> savedLayers = model->layers;
+						{
+							std::lock_guard lock(progressMutex);
+							accHistory.clear();
+							iterHistory.clear();
+						}
+						currentIter = 0;
+						currentAcc = 0.0f;
+
+						// copy everything the thread needs
+						const std::string savedPath = modelPath;
+						const std::vector<size_t> savedLayers = model->layers;
 
 						std::vector<
 							std::vector<float>(*)(const std::vector<float>&)
 						> savedActivations;
-						savedActivations.reserve(model->activations.size() - 1);
+
 						for (size_t i = 1; i < model->activations.size(); ++i)
 							savedActivations.push_back(model->activations[i].fn);
 
-						int savedIters = iters;
-						float savedLr = lr;
+						const int savedIters = iters;
+						const float savedLr = lr;
 
-						// Launch thread with *copies*, not references
-						std::thread([this,savedPath,
+						std::thread([this,
+							savedPath,
 							savedLayers,
 							savedActivations,
 							savedIters,
-							savedLr]()
+							savedLr
+						]()
 							{
 								auto log = [&](const std::string& msg)
 									{
-										std::lock_guard lock(trainingLogMutex);
+										std::lock_guard<std::mutex> lock(trainingLogMutex);
 										trainingLogs.push_back(msg);
 									};
 
-								log("[BUILD] Starting training in the background...");
-								log("[BUILD] Path: " + savedPath);
+								log("[BUILD] Background training started");
 
-								// Load dataset
 								Heron::Loader loader("datasets");
 								if (!loader.load("train") || loader.size() == 0)
 								{
-									log("[ERROR] Failed to load training dataset");
+									log("[ERROR] Dataset load failed");
 									training = false;
 									trainingDone = true;
 									return;
@@ -440,10 +447,12 @@ namespace HeronGui
 
 								std::vector<std::vector<float>> X;
 								std::vector<uint8_t> Y;
+
 								X.reserve(loader.size());
 								Y.reserve(loader.size());
 
-								for (size_t i = 0; i < loader.size(); ++i) {
+								for (size_t i = 0; i < loader.size(); ++i)
+								{
 									X.push_back(loader.get_image(i));
 									Y.push_back(loader.get_label(i));
 								}
@@ -451,7 +460,7 @@ namespace HeronGui
 								if (savedLayers.size() < 2 ||
 									savedActivations.size() != savedLayers.size() - 1)
 								{
-									log("[ERROR] Invalid model shape");
+									log("[ERROR] Invalid model definition");
 									training = false;
 									trainingDone = true;
 									return;
@@ -459,41 +468,102 @@ namespace HeronGui
 
 								log("[BUILD] Training network...");
 								Heron::Network net(savedLayers, savedActivations);
-								Heron::Trainer::gradient_descent(net, X, Y, savedLr, savedIters);
+								Heron::Trainer::gradient_descent(
+									net,
+									X,
+									Y,
+									savedLr,
+									savedIters,
+									[this]
+									(int iter, float acc)
+									{
+										{
+											std::lock_guard lock(progressMutex);
+											iterHistory.push_back(iter);
+											accHistory.push_back(acc);
+										}
+
+										currentIter = iter;
+										currentAcc = acc;
+
+										{
+											std::lock_guard lock(trainingLogMutex);
+											trainingLogs.push_back(
+												"[ITER " + std::to_string(iter) +
+												"] acc = " + std::to_string(acc)
+											);
+										}
+									}
+								);
 
 								net.save_model(savedPath);
-								log("[BUILD] Model trained & saved.");
+								log("[BUILD] Model saved: " + savedPath);
 
 								training = false;
 								trainingDone = true;
 
-							}).detach(); // detach so it runs independently
+							}).detach();
 					}
 
 
-					// ---------- Console Window ----------
+					// ---------- Plot ----------
 					ImGui::PushFont(BoldItalic);
-					ImGui::Begin("Console");
+					ImGui::Begin("Training Progress");
 					ImGui::PopFont();
+
+					ImGui::Text("Status: %s",
+						training ? "Training..." :
+						trainingDone ? "Done" : "Idle"
+					);
+
+					ImGui::Text("Iteration: %d", currentIter.load());
+					ImGui::Text("Accuracy : %.4f", currentAcc.load());
+
+					ImGui::Separator();
+
+					{
+						std::lock_guard lock(progressMutex);
+
+						if (!accHistory.empty())
+						{
+							ImGui::PlotLines(
+								"Accuracy",
+								accHistory.data(),
+								(int)accHistory.size(),
+								0,
+								nullptr,
+								0.0f,
+								1.0f,
+								ImVec2(-1, 200)
+							);
+						}
+						else
+						{
+							ImGui::TextDisabled("Waiting for training data...");
+						}
+					}
+
+					ImGui::End();
+
+					// ---------- Training Log ----------
+					ImGui::PushFont(BoldItalic);
+					ImGui::Begin("Training Log");
+					ImGui::PopFont();
+
+					ImGui::BeginChild("log_scroll", ImVec2(0, 0), false);
+
 					{
 						std::lock_guard lock(trainingLogMutex);
-						for (auto& line : trainingLogs)
+						for (const auto& line : trainingLogs)
 							ImGui::TextUnformatted(line.c_str());
-					}
-					if (training) {
-						ImGui::Text("Status: Training…");
-					}
-					else if (trainingDone) {
-						ImGui::Text("Status: Done!");
 					}
 
 					if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY())
 						ImGui::SetScrollHereY(1.0f);
 
+					ImGui::EndChild();
 					ImGui::End();
-
 				});
-			ImGui::ShowDemoWindow();
 		}
 	};
 }
