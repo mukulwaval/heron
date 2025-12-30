@@ -305,6 +305,9 @@ namespace HeronGui
 
 		std::atomic<int> imgPredResult{ -1 };
 
+		std::array<float, 10> imgClassProbs{};
+		std::array<float, 10> sampleClassProbs{};
+
 		std::vector<float> imgPreview; // 28x28 grayscale
 
 		void OnFrame(float deltaTime) override
@@ -313,7 +316,7 @@ namespace HeronGui
 			static char modelPath[256] = "model.hrnmdl";
 			static char evalModelPath[256] = "model.hrnmdl";
 			static bool buildRequested = false;
-			
+
 			static int sampleIdx = 0;
 
 			static char imgPath[256] = "images\\test_index.bmp";
@@ -533,6 +536,16 @@ namespace HeronGui
 									std::vector<std::vector<float>> Z, A;
 									net.predict(imgPreview, Z, A);
 
+									auto& out = A.back();
+
+									// safety normalize (even if already softmax)
+									float sum = 0.0f;
+									for (float v : out) sum += v;
+									if (sum <= 0.0f) sum = 1.0f;
+
+									for (int i = 0; i < 10; ++i)
+										imgClassProbs[i] = out[i] / sum;
+
 									int pred = Heron::Trainer::get_prediction(A.back());
 									imgPredResult.store(pred, std::memory_order_relaxed);
 
@@ -563,6 +576,61 @@ namespace HeronGui
 							imgPredResult.load()
 						);
 					}
+
+					if (imgPredDone)
+					{
+						ImGui::Spacing();
+						ImGui::Separator();
+						ImGui::Spacing();
+
+						ImGui::Text("Class Probabilities");
+
+						if (ImGui::BeginTable("##class_probs", 3,
+							ImGuiTableFlags_Borders |
+							ImGuiTableFlags_RowBg |
+							ImGuiTableFlags_SizingStretchProp))
+						{
+							ImGui::TableSetupColumn("Class", ImGuiTableColumnFlags_WidthFixed, 60);
+							ImGui::TableSetupColumn("Probability", ImGuiTableColumnFlags_WidthStretch);
+							ImGui::TableSetupColumn("%", ImGuiTableColumnFlags_WidthFixed, 60);
+							ImGui::TableHeadersRow();
+
+							for (int i = 0; i < 10; ++i)
+							{
+								float p = imgClassProbs[i];
+								bool isPred = (i == imgPredResult.load());
+
+								ImGui::TableNextRow();
+
+								// ---- class ----
+								ImGui::TableSetColumnIndex(0);
+								if (isPred)
+									ImGui::TextColored(ImVec4(0, 1, 0, 1), "%d", i);
+								else
+									ImGui::Text("%d", i);
+
+								// ---- bar ----
+								ImGui::TableSetColumnIndex(1);
+
+								ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImVec4(0.5f, 0.5f, 0.5f, 1.0f));   // fill
+								ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.15f, 0.15f, 0.15f, 1.0f)); // background
+
+								ImGui::ProgressBar(
+									p,
+									ImVec2(-1, 0),
+									nullptr
+								);
+
+								ImGui::PopStyleColor(2);
+
+								// ---- percent ----
+								ImGui::TableSetColumnIndex(2);
+								ImGui::Text("%.1f%%", p * 100.0f);
+							}
+							ImGui::EndTable();
+						}
+					}
+
 					ImGui::End();
 
 					// ---------- Image Preview -----------
@@ -695,6 +763,16 @@ namespace HeronGui
 								std::vector<std::vector<float>> Z, A;
 								net.predict(X[savedIdx], Z, A);
 
+								auto& out = A.back();
+
+								// safety normalize (even if already softmax)
+								float sum = 0.0f;
+								for (float v : out) sum += v;
+								if (sum <= 0.0f) sum = 1.0f;
+
+								for (int i = 0; i < 10; ++i)
+									sampleClassProbs[i] = out[i] / sum;
+
 								int pred = Heron::Trainer::get_prediction(A.back());
 								samplePred.store(pred, std::memory_order_relaxed);
 								sampleLabel.store(Y[savedIdx], std::memory_order_relaxed);
@@ -727,6 +805,60 @@ namespace HeronGui
 							"Prediction: %d", samplePred.load());
 						ImGui::Text(
 							"Label: %d", sampleLabel.load());
+					}
+
+					if (sampleDone)
+					{
+						ImGui::Spacing();
+						ImGui::Separator();
+						ImGui::Spacing();
+
+						ImGui::Text("Class Probabilities");
+
+						if (ImGui::BeginTable("##sample_class_probs", 3,
+							ImGuiTableFlags_Borders |
+							ImGuiTableFlags_RowBg |
+							ImGuiTableFlags_SizingStretchProp))
+						{
+							ImGui::TableSetupColumn("Class", ImGuiTableColumnFlags_WidthFixed, 60);
+							ImGui::TableSetupColumn("Probability", ImGuiTableColumnFlags_WidthStretch);
+							ImGui::TableSetupColumn("%", ImGuiTableColumnFlags_WidthFixed, 60);
+							ImGui::TableHeadersRow();
+
+							for (int i = 0; i < 10; ++i)
+							{
+								float p = sampleClassProbs[i];
+								bool isPred = (i == samplePred.load());
+
+								ImGui::TableNextRow();
+
+								// ---- class ----
+								ImGui::TableSetColumnIndex(0);
+								if (isPred)
+									ImGui::TextColored(ImVec4(0, 1, 0, 1), "%d", i);
+								else
+									ImGui::Text("%d", i);
+
+								// ---- bar ----
+								ImGui::TableSetColumnIndex(1);
+
+								ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImVec4(0.5f, 0.5f, 0.5f, 1.0f));   // fill
+								ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.15f, 0.15f, 0.15f, 1.0f)); // background
+
+								ImGui::ProgressBar(
+									p,
+									ImVec2(-1, 0),
+									nullptr
+								);
+
+								ImGui::PopStyleColor(2);
+
+								// ---- percent ----
+								ImGui::TableSetColumnIndex(2);
+								ImGui::Text("%.1f%%", p * 100.0f);
+							}
+							ImGui::EndTable();
+						}
 					}
 					ImGui::End();
 

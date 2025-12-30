@@ -10,7 +10,7 @@ namespace HeronGui::Components {
 
         // TODO: remove this later if needed
         ImGuiWindowFlags window_flags =
-            ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_MenuBar;
+            ImGuiWindowFlags_NoDocking /* | ImGuiWindowFlags_MenuBar*/;
 
         if (opt_fullscreen) {
             const ImGuiViewport* viewport = ImGui::GetMainViewport();
