@@ -138,11 +138,13 @@ void Application::Frame() {
   m_Renderer->Clear(ImColor(30, 30, 30, 255));
   m_Renderer->RenderDrawData(ImGui::GetDrawData());
 
+#if PLATFORM(WINDOWS)
   //renderer handles backend nonsense
   m_Renderer->BeginImGuiPlatformWindows();
   ImGui::UpdatePlatformWindows();
   ImGui::RenderPlatformWindowsDefault();
   m_Renderer->EndImGuiPlatformWindows();
+#endif
 
   m_Platform->FinishFrame();
 }
