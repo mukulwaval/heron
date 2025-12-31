@@ -32,6 +32,10 @@ Application::~Application() {
 
 bool Application::Create(int width /*= -1*/, int height /*= -1*/) {
   m_Context = ImGui::CreateContext();
+
+  ImGuiIO& io = ImGui::GetIO();
+  io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+
   ImGui::SetCurrentContext(m_Context);
 
   if (!m_Platform->OpenMainWindow("Application", width, height)) return false;
@@ -40,7 +44,6 @@ bool Application::Create(int width /*= -1*/, int height /*= -1*/) {
 
   m_IniFilename = m_Name + ".ini";
 
-  ImGuiIO& io = ImGui::GetIO();
   // io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;  // Enable Keyboard
   // Controls
   io.IniFilename = m_IniFilename.c_str();
@@ -77,9 +80,6 @@ int Application::Run() {
 void Application::RecreateFontAtlas() {}
 
 void Application::Frame() {
-  ImGuiIO& io = ImGui::GetIO();
-  io.ConfigFlags &= ~ImGuiConfigFlags_ViewportsEnable;
-
   if (m_Platform->HasWindowScaleChanged())
     m_Platform->AcknowledgeWindowScaleChanged();
   if (m_Platform->HasFramebufferScaleChanged()) {
@@ -90,6 +90,7 @@ void Application::Frame() {
   const float windowScale = m_Platform->GetWindowScale();
   const float framebufferScale = m_Platform->GetFramebufferScale();
 
+  ImGuiIO& io = ImGui::GetIO();
   if (io.WantSetMousePos) {
     io.MousePos.x *= windowScale;
     io.MousePos.y *= windowScale;
@@ -106,16 +107,22 @@ void Application::Frame() {
   m_Renderer->Clear(ImColor(30, 30, 30, 255));
   m_Renderer->RenderDrawData(ImGui::GetDrawData());
 
+  //renderer handles backend nonsense
+  m_Renderer->BeginImGuiPlatformWindows();
+  ImGui::UpdatePlatformWindows();
+  ImGui::RenderPlatformWindowsDefault();
+  m_Renderer->EndImGuiPlatformWindows();
+
   m_Platform->FinishFrame();
 }
 
-void Application::SetTitle(const char* title) {
+void Application::SetTitle(const char* title) const {
   m_Platform->SetMainWindowTitle(title);
 }
 
-bool Application::Close() { return m_Platform->CloseMainWindow(); }
+bool Application::Close() const { return m_Platform->CloseMainWindow(); }
 
-void Application::Quit() { m_Platform->Quit(); }
+void Application::Quit() const { m_Platform->Quit(); }
 
 const std::string& Application::GetName() const { return m_Name; }
 

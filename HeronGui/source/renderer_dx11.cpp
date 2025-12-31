@@ -36,11 +36,17 @@ struct RendererDX11 final : Renderer {
   void CreateRenderTarget();
   void CleanupRenderTarget();
 
+  void BeginImGuiPlatformWindows() override;
+  void EndImGuiPlatformWindows() override;
+
   Platform* m_Platform = nullptr;
   ID3D11Device* m_device = nullptr;
   ID3D11DeviceContext* m_deviceContext = nullptr;
   IDXGISwapChain* m_swapChain = nullptr;
   ID3D11RenderTargetView* m_mainRenderTargetView = nullptr;
+
+  ID3D11RenderTargetView* m_BackupRTV = nullptr;
+  ID3D11DepthStencilView* m_BackupDSV = nullptr;
 };
 
 std::unique_ptr<Renderer> CreateRenderer() {
@@ -231,6 +237,23 @@ int RendererDX11::GetTextureHeight(ImTextureID texture) {
   tex->Release();
   res->Release();
   return desc.Height;
+}
+
+void RendererDX11::BeginImGuiPlatformWindows() {
+    m_deviceContext->OMGetRenderTargets(1, &m_BackupRTV, &m_BackupDSV);
+}
+
+void RendererDX11::EndImGuiPlatformWindows() {
+    m_deviceContext->OMSetRenderTargets(1, &m_mainRenderTargetView, nullptr);
+
+    if (m_BackupRTV) {
+        m_BackupRTV->Release();
+        m_BackupRTV = nullptr;
+    }
+    if (m_BackupDSV) {
+        m_BackupDSV->Release();
+        m_BackupDSV = nullptr;
+    }
 }
 
 #endif  // RENDERER(IMGUI_DX11)

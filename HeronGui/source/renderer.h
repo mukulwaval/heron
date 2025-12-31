@@ -30,6 +30,9 @@ struct Renderer {
   virtual void DestroyTexture(ImTextureID texture) = 0;
   virtual int GetTextureWidth(ImTextureID texture) = 0;
   virtual int GetTextureHeight(ImTextureID texture) = 0;
+
+  virtual void BeginImGuiPlatformWindows() {}
+  virtual void EndImGuiPlatformWindows() {}
 };
 
 std::unique_ptr<Renderer> CreateRenderer();

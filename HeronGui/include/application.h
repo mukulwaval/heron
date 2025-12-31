@@ -18,10 +18,10 @@ struct Application {
 
   int Run();
 
-  void SetTitle(const char* title);
+  void SetTitle(const char* title) const;
 
-  bool Close();
-  void Quit();
+  bool Close() const;
+  void Quit() const;
 
   const std::string& GetName() const;
 
