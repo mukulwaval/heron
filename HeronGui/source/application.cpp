@@ -1,5 +1,34 @@
 #include "application.h"
 
+// Standard includes
+#include <algorithm>  // For std::find_if
+#include <cstdint>    // For std::uintptr_t
+
+// ImGui
+#include "imgui.h"
+#include "imgui_impl_opengl3.h"
+
+// OpenGL loader (pick one based on your setup)
+#if defined(IMGUI_IMPL_OPENGL_LOADER_GL3W)
+#include <GL/gl3w.h>
+#elif defined(IMGUI_IMPL_OPENGL_LOADER_GLEW)
+#include <GL/glew.h>
+#elif defined(IMGUI_IMPL_OPENGL_LOADER_GLAD)
+#include <glad/glad.h>
+#elif defined(IMGUI_IMPL_OPENGL_LOADER_GLAD2)
+#include <glad/gl.h>
+#elif defined(IMGUI_IMPL_OPENGL_LOADER_GLBINDING2)
+#include <glbinding/Binding.h>
+#include <glbinding/gl/gl.h>
+using namespace gl;
+#elif defined(IMGUI_IMPL_OPENGL_LOADER_GLBINDING3)
+#include <glbinding/gl/gl.h>
+#include <glbinding/glbinding.h>
+using namespace gl;
+#else
+#include "imgui_impl_opengl3_loader.h"
+#endif
+
 #include "platform.h"
 #include "renderer.h"
 #include "setup.h"
@@ -7,6 +36,7 @@
 extern "C" {
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_STATIC
+
 #include "stb_image.h"
 }
 
@@ -104,14 +134,27 @@ void Application::Frame() {
 
   ImGui::Render();
 
+  // Clear main window framebuffer
   m_Renderer->Clear(ImColor(30, 30, 30, 255));
   m_Renderer->RenderDrawData(ImGui::GetDrawData());
 
-  //renderer handles backend nonsense
-  m_Renderer->BeginImGuiPlatformWindows();
+  // Backup main FBO/viewport
+  GLint backupFBO = 0;
+  GLint backupViewport[4] = {};
+  glGetIntegerv(GL_FRAMEBUFFER_BINDING, &backupFBO);
+  glGetIntegerv(GL_VIEWPORT, backupViewport);
+
+  // Render all ImGui platform windows
   ImGui::UpdatePlatformWindows();
   ImGui::RenderPlatformWindowsDefault();
-  m_Renderer->EndImGuiPlatformWindows();
+
+  // Restore main window framebuffer
+  glBindFramebuffer(GL_FRAMEBUFFER, backupFBO);
+  glViewport(backupViewport[0], backupViewport[1], backupViewport[2],
+             backupViewport[3]);
+
+  // Render main window again (if needed)
+  m_Renderer->RenderDrawData(ImGui::GetDrawData());
 
   m_Platform->FinishFrame();
 }
@@ -155,7 +198,7 @@ int Application::GetTextureHeight(ImTextureID texture) {
 
 ImGuiWindowFlags Application::GetWindowFlags() const {
   return ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
-         ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar |
+         /*ImGuiWindowFlags_NoMove |*/ ImGuiWindowFlags_NoScrollbar |
          ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoSavedSettings |
          ImGuiWindowFlags_NoBringToFrontOnFocus;
 }

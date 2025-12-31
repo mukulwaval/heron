@@ -68,8 +68,8 @@ struct RendererOpenGL3 final : Renderer {
   Platform* m_Platform = nullptr;
   ImVector<ImTexture> m_Textures;
 
-  GLuint m_BackupFBO = 0;
-  GLint  m_BackupViewport[4] = {};
+  GLint m_BackupFBO = 0;
+  GLint m_BackupViewport[4] = {};
 };
 
 std::unique_ptr<Renderer> CreateRenderer() {
@@ -198,19 +198,15 @@ int RendererOpenGL3::GetTextureHeight(ImTextureID texture) {
   return 0;
 }
 
-void RendererOpenGL3::BeginImGuiPlatformWindows() override {
-    glGetIntegerv(GL_FRAMEBUFFER_BINDING, (GLint*)&m_BackupFBO);
-    glGetIntegerv(GL_VIEWPORT, m_BackupViewport);
+void RendererOpenGL3::BeginImGuiPlatformWindows() {
+  glGetIntegerv(GL_FRAMEBUFFER_BINDING, &m_BackupFBO);
+  glGetIntegerv(GL_VIEWPORT, m_BackupViewport);
 }
 
-void RendererOpenGL3::EndImGuiPlatformWindows() override {
-    glBindFramebuffer(GL_FRAMEBUFFER, m_BackupFBO);
-    glViewport(
-        m_BackupViewport[0],
-        m_BackupViewport[1],
-        m_BackupViewport[2],
-        m_BackupViewport[3]
-    );
+void RendererOpenGL3::EndImGuiPlatformWindows() {
+  glBindFramebuffer(GL_FRAMEBUFFER, m_BackupFBO);
+  glViewport(m_BackupViewport[0], m_BackupViewport[1], m_BackupViewport[2],
+             m_BackupViewport[3]);
 }
 
 #endif  // RENDERER(IMGUI_OGL3)

@@ -240,20 +240,20 @@ int RendererDX11::GetTextureHeight(ImTextureID texture) {
 }
 
 void RendererDX11::BeginImGuiPlatformWindows() {
-    m_deviceContext->OMGetRenderTargets(1, &m_BackupRTV, &m_BackupDSV);
+  m_deviceContext->OMGetRenderTargets(1, &m_BackupRTV, &m_BackupDSV);
 }
 
 void RendererDX11::EndImGuiPlatformWindows() {
-    m_deviceContext->OMSetRenderTargets(1, &m_mainRenderTargetView, nullptr);
+  m_deviceContext->OMSetRenderTargets(1, &m_mainRenderTargetView, nullptr);
 
-    if (m_BackupRTV) {
-        m_BackupRTV->Release();
-        m_BackupRTV = nullptr;
-    }
-    if (m_BackupDSV) {
-        m_BackupDSV->Release();
-        m_BackupDSV = nullptr;
-    }
+  if (m_BackupRTV) {
+    m_BackupRTV->Release();
+    m_BackupRTV = nullptr;
+  }
+  if (m_BackupDSV) {
+    m_BackupDSV->Release();
+    m_BackupDSV = nullptr;
+  }
 }
 
 #endif  // RENDERER(IMGUI_DX11)
