@@ -2,66 +2,95 @@
 
 #include <algorithm>
 #include <cmath>
+#include <omp.h>
 #include <vector>
 
 namespace Heron {
-std::vector<float> Activation::relu(const std::vector<float>& Z) {
-  const size_t n = Z.size();
-  std::vector<float> A;
-  A.resize(n);
+    std::vector<float> Activation::relu(const std::vector<float>& Z) {
+        std::vector<float> out(Z.size());
+        relu_inplace(Z, out);
+        return out;
+    }
 
-  for (size_t i = 0; i < n; ++i) A[i] = Z[i] > 0.0f ? Z[i] : 0.0f;
+    std::vector<float> Activation::relu_deriv(const std::vector<float>& Z) {
+        std::vector<float> out(Z.size());
+        relu_deriv_inplace(Z, out);
+        return out;
+    }
 
-  return A;
-}
+    std::vector<float> Activation::tanh(const std::vector<float>& Z) {
+        std::vector<float> out(Z.size());
+        tanh_inplace(Z, out);
+        return out;
+    }
 
-std::vector<float> Activation::relu_deriv(const std::vector<float>& Z) {
-  const size_t n = Z.size();
-  std::vector<float> A;
-  A.resize(n);
+    std::vector<float> Activation::tanh_deriv(const std::vector<float>& Z) {
+        std::vector<float> out(Z.size());
+        tanh_deriv_inplace(Z, out);
+        return out;
+    }
 
-  for (size_t i = 0; i < n; ++i) A[i] = Z[i] > 0.0f ? 1.0f : 0.0f;
+    std::vector<float> Activation::softmax(const std::vector<float>& Z) {
+        std::vector<float> out(Z.size());
+        softmax_inplace(Z, out);
+        return out;
+    }
 
-  return A;
-}
+    void Activation::relu_inplace(const std::vector<float>& Z, std::vector<float>& out) {
+        const size_t n = Z.size();
+        if (out.size() != n) out.resize(n);
 
-std::vector<float> Activation::tanh(const std::vector<float>& Z) {
-  const size_t n = Z.size();
-  std::vector<float> A;
-  A.resize(n);
+#pragma omp simd
+        for (size_t i = 0; i < n; ++i)
+            out[i] = Z[i] > 0.0f ? Z[i] : 0.0f;
+    }
 
-  for (size_t i = 0; i < n; ++i) A[i] = std::tanh(Z[i]);
+    void Activation::relu_deriv_inplace(const std::vector<float>& Z, std::vector<float>& out) {
+        const size_t n = Z.size();
+        if (out.size() != n) out.resize(n);
 
-  return A;
-}
+#pragma omp simd
+        for (size_t i = 0; i < n; ++i)
+            out[i] = Z[i] > 0.0f ? 1.0f : 0.0f;
+    }
 
-std::vector<float> Activation::tanh_deriv(const std::vector<float>& Z) {
-  const size_t n = Z.size();
-  std::vector<float> A;
-  A.resize(n);
+    void Activation::tanh_inplace(const std::vector<float>& Z, std::vector<float>& out) {
+        const size_t n = Z.size();
+        if (out.size() != n) out.resize(n);
 
-  for (size_t i = 0; i < n; ++i) {
-    float t = std::tanh(Z[i]);
-    A[i] = 1.0f - t * t;
-  }
+#pragma omp simd
+        for (size_t i = 0; i < n; ++i)
+            out[i] = std::tanh(Z[i]);
+    }
 
-  return A;
-}
+    void Activation::tanh_deriv_inplace(const std::vector<float>& Z, std::vector<float>& out) {
+        const size_t n = Z.size();
+        if (out.size() != n) out.resize(n);
 
-std::vector<float> Activation::softmax(const std::vector<float>& Z) {
-  const size_t n = Z.size();
-  std::vector<float> A;
-  A.resize(n);
+#pragma omp simd
+        for (size_t i = 0; i < n; ++i) {
+            float t = std::tanh(Z[i]);
+            out[i] = 1.0f - t * t;
+        }
+    }
+    void Activation::softmax_inplace(const std::vector<float>& Z, std::vector<float>& out) {
+        const size_t n = Z.size();
+        if (out.size() != n) out.resize(n);
 
-  float max_val = *std::max_element(Z.begin(), Z.end());
+        float max_val = *std::max_element(Z.begin(), Z.end());
+        float sum = 0.0f;
 
-  float sum = 0.0f;
-  for (size_t i = 0; i < n; ++i) sum += std::exp(Z[i] - max_val);
+#pragma omp parallel for reduction(+:sum)
+        for (size_t i = 0; i < n; ++i) {
+            out[i] = std::exp(Z[i] - max_val);
+            sum += out[i];
+        }
 
-  const float inv_sum = 1.0f / sum;
-  for (size_t i = 0; i < n; ++i) A[i] = std::exp(Z[i] - max_val) * inv_sum;
+        const float inv_sum = 1.0f / sum;
+#pragma omp simd
+        for (size_t i = 0; i < n; ++i)
+            out[i] *= inv_sum;
+    }
 
-  return A;
-}
 
 }  // namespace Heron
