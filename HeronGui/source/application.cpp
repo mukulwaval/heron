@@ -138,23 +138,11 @@ void Application::Frame() {
   m_Renderer->Clear(ImColor(30, 30, 30, 255));
   m_Renderer->RenderDrawData(ImGui::GetDrawData());
 
-  // Backup main FBO/viewport
-  GLint backupFBO = 0;
-  GLint backupViewport[4] = {};
-  glGetIntegerv(GL_FRAMEBUFFER_BINDING, &backupFBO);
-  glGetIntegerv(GL_VIEWPORT, backupViewport);
-
-  // Render all ImGui platform windows
+  //renderer handles backend nonsense
+  m_Renderer->BeginImGuiPlatformWindows();
   ImGui::UpdatePlatformWindows();
   ImGui::RenderPlatformWindowsDefault();
-
-  // Restore main window framebuffer
-  glBindFramebuffer(GL_FRAMEBUFFER, backupFBO);
-  glViewport(backupViewport[0], backupViewport[1], backupViewport[2],
-             backupViewport[3]);
-
-  // Render main window again (if needed)
-  m_Renderer->RenderDrawData(ImGui::GetDrawData());
+  m_Renderer->EndImGuiPlatformWindows();
 
   m_Platform->FinishFrame();
 }
