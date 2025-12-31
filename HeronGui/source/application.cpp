@@ -64,7 +64,9 @@ bool Application::Create(int width /*= -1*/, int height /*= -1*/) {
   m_Context = ImGui::CreateContext();
 
   ImGuiIO& io = ImGui::GetIO();
+#if PLATFORM(WINDOWS)
   io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+#endif
 
   ImGui::SetCurrentContext(m_Context);
 
@@ -139,7 +141,7 @@ void Application::Frame() {
   m_Renderer->RenderDrawData(ImGui::GetDrawData());
 
 #if PLATFORM(WINDOWS)
-  //renderer handles backend nonsense
+  // renderer handles backend nonsense
   m_Renderer->BeginImGuiPlatformWindows();
   ImGui::UpdatePlatformWindows();
   ImGui::RenderPlatformWindowsDefault();

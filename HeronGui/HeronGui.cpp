@@ -229,7 +229,9 @@ struct MainEditor : public Application {
   void OnStart() override {
     ImGuiIO& io = ImGui::GetIO();
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+#if PLATFORM(WINDOWS)
     io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+#endif
 
     SetTitle("Heron");
 
@@ -268,8 +270,8 @@ struct MainEditor : public Application {
   }
 
   void OnStop() override {
-      Close();
-      Quit();
+    Close();
+    Quit();
   }
 
   std::atomic<bool> training = false;
