@@ -6,7 +6,7 @@ project "Heron"
 
 	targetdir ("%{wks.location}/bin/" .. outputdir .. "/%{prj.name}")
 	objdir ("%{wks.location}/bin-int/" .. outputdir .. "/%{prj.name}")
-
+	
 	files
 	{
 		"include/**.h",
@@ -19,6 +19,13 @@ project "Heron"
 	}
 
 	flags { "NoPCH" }
+
+	filter "system:linux"
+		systemversion "latest"
+
+		libdirs {
+        	"%{cfg.targetdir}"
+   	 	}	
 
 	filter "system:windows"
 		systemversion "latest"

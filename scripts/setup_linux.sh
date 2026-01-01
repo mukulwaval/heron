@@ -12,6 +12,6 @@ echo "Cleaning old build files..."
 
 # generate Makefiles
 echo "Generating Makefiles..."
-./vendor/premake/premake5 gmake2
+./vendor/premake/premake5 gmake
 
 echo "Done generating Makefiles."

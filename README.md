@@ -14,6 +14,14 @@ make config=release
 make config=debug
 ```
 
+After build, cd into the target dir, then
+
+```bash
+cd HeronGui
+patchelf --remove-rpath HeronGui
+patchelf --set-rpath '$ORIGIN' HeronGui
+```
+
 #### Setup for windows:
 
 run `scripts/setupz-win.bat`

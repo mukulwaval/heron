@@ -68,11 +68,8 @@ project "HeronGui"
 		"%{wks.location}/HeronGui/vendor/json/single_include"
 	}
 
-	libdirs {
-        "%{wks.location}/bin/" .. outputdir .. "/Heron"  -- point to Heron lib output
-    }
-
 	links { "Heron" }
+
 	dependson { "Heron" }
 
 	postbuildcommands
@@ -122,6 +119,12 @@ project "HeronGui"
 
 	filter "system:linux"
 		systemversion "latest"
+
+		linkoptions {
+			"-Wl,-rpath,$ORIGIN",
+			"-Wl,-rpath-link,$ORIGIN",
+			"-Wl,--disable-new-dtags"
+		}
 
 		postbuildcommands
 		{
