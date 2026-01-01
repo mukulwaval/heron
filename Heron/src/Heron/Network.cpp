@@ -55,71 +55,67 @@ Network::Network(const std::vector<size_t>& layer_sizes,
 }
 
 void Network::init_params() {
-    std::mt19937 rng(std::random_device{}());
-    std::uniform_real_distribution<float> dist(-1.0f, 1.0f);
+  std::mt19937 rng(std::random_device{}());
+  std::uniform_real_distribution<float> dist(-1.0f, 1.0f);
 
-    for (size_t l = 0; l < weights.size(); l++) {
-        size_t in = layer_sizes[l], out = layer_sizes[l + 1];
-        weights[l].resize(out);
-        dW[l].resize(out);
+  for (size_t l = 0; l < weights.size(); l++) {
+    size_t in = layer_sizes[l], out = layer_sizes[l + 1];
+    weights[l].resize(out);
+    dW[l].resize(out);
 
-        for (size_t i = 0; i < out; i++) {
-            weights[l][i].resize(in);
-            dW[l][i].resize(in);
-            for (size_t j = 0; j < in; j++)
-                weights[l][i][j] = dist(rng);
-        }
-
-        biases[l].resize(out);
-        db[l].resize(out);
+    for (size_t i = 0; i < out; i++) {
+      weights[l][i].resize(in);
+      dW[l][i].resize(in);
+      for (size_t j = 0; j < in; j++) weights[l][i][j] = dist(rng);
     }
+
+    biases[l].resize(out);
+    db[l].resize(out);
+  }
 }
 
 void Network::forward(const std::vector<float>& input) {
-    A[0].assign(input.begin(), input.end());
+  A[0].assign(input.begin(), input.end());
 
-    for (size_t l = 0; l < weights.size(); l++) {
-        // reuse Z[l] to avoid allocation
-        Utils::mat_vec_inplace(weights[l], A[l], biases[l], Z[l]);
-        A[l + 1] = activation_fns[l](Z[l]);
-    }
+  for (size_t l = 0; l < weights.size(); l++) {
+    // reuse Z[l] to avoid allocation
+    Utils::mat_vec_inplace(weights[l], A[l], biases[l], Z[l]);
+    A[l + 1] = activation_fns[l](Z[l]);
+  }
 }
 
 void Network::backward(int Y) {
-    const size_t L = weights.size();
+  const size_t L = weights.size();
 
-    std::vector<std::vector<float>> dZ(L);
-    std::vector<std::vector<float>> dA(L);
+  std::vector<std::vector<float>> dZ(L);
+  std::vector<std::vector<float>> dA(L);
 
-    const size_t C = A[L].size();
-    auto Y_oh = Utils::one_hot(Y, static_cast<int>(C));
+  const size_t C = A[L].size();
+  auto Y_oh = Utils::one_hot(Y, static_cast<int>(C));
 
-    if (dZ[L - 1].size() != C) dZ[L - 1].resize(C);
-    for (size_t i = 0; i < C; i++)
-        dZ[L - 1][i] = A[L][i] - Y_oh[i];
+  if (dZ[L - 1].size() != C) dZ[L - 1].resize(C);
+  for (size_t i = 0; i < C; i++) dZ[L - 1][i] = A[L][i] - Y_oh[i];
 
-    for (int l = (int)L - 1; l >= 0; l--) {
-        Utils::outer_product_inplace(dZ[l], A[l], dW[l]);
-        db[l] = dZ[l];
+  for (int l = (int)L - 1; l >= 0; l--) {
+    Utils::outer_product_inplace(dZ[l], A[l], dW[l]);
+    db[l] = dZ[l];
 
-        if (l == 0) continue;
+    if (l == 0) continue;
 
-        if (dA[l - 1].size() != layer_sizes[l]) dA[l - 1].resize(layer_sizes[l]);
-        Utils::matT_vec_inplace(weights[l], dZ[l], dA[l - 1]);
+    if (dA[l - 1].size() != layer_sizes[l]) dA[l - 1].resize(layer_sizes[l]);
+    Utils::matT_vec_inplace(weights[l], dZ[l], dA[l - 1]);
 
-        if (activation_derivs[l - 1]) {
-            auto deriv = activation_derivs[l - 1](Z[l - 1]);
+    if (activation_derivs[l - 1]) {
+      auto deriv = activation_derivs[l - 1](Z[l - 1]);
 
-            if (dZ[l - 1].size() != deriv.size())
-                dZ[l - 1].resize(deriv.size());
+      if (dZ[l - 1].size() != deriv.size()) dZ[l - 1].resize(deriv.size());
 
-            for (size_t i = 0; i < deriv.size(); i++)
-                dZ[l - 1][i] = deriv[i] * dA[l - 1][i];
-        }
-        else {
-            dZ[l - 1] = dA[l - 1];
-        }
+      for (size_t i = 0; i < deriv.size(); i++)
+        dZ[l - 1][i] = deriv[i] * dA[l - 1][i];
+    } else {
+      dZ[l - 1] = dA[l - 1];
     }
+  }
 }
 
 void Network::update(float lr) {
@@ -218,20 +214,20 @@ void Network::load_model(const std::string& path) {
 }
 
 void Network::predict(const std::vector<float>& input,
-    std::vector<std::vector<float>>& Z_out,
-    std::vector<std::vector<float>>& A_out) const {
-    const size_t L = weights.size();
+                      std::vector<std::vector<float>>& Z_out,
+                      std::vector<std::vector<float>>& A_out) const {
+  const size_t L = weights.size();
 
-    Z_out.resize(L);
-    A_out.resize(L + 1);
-    A_out[0] = input;  // copy input once
+  Z_out.resize(L);
+  A_out.resize(L + 1);
+  A_out[0] = input;  // copy input once
 
-    for (size_t l = 0; l < L; l++) {
-        Utils::mat_vec_inplace(weights[l], A_out[l], biases[l], Z_out[l]);
-        if (A_out[l + 1].size() != Z_out[l].size())
-            A_out[l + 1].resize(Z_out[l].size());
-        A_out[l + 1] = activation_fns[l](Z_out[l]);
-    }
+  for (size_t l = 0; l < L; l++) {
+    Utils::mat_vec_inplace(weights[l], A_out[l], biases[l], Z_out[l]);
+    if (A_out[l + 1].size() != Z_out[l].size())
+      A_out[l + 1].resize(Z_out[l].size());
+    A_out[l + 1] = activation_fns[l](Z_out[l]);
+  }
 }
 
 size_t Network::layer_count() const { return layer_sizes.size(); }
