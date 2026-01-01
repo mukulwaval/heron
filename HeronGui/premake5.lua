@@ -36,6 +36,13 @@ project "HeronGui"
 		"vendor/ImNodeFlow/src/**.cpp",
 		"vendor/ImNodeFlow/src/**.inl",
 
+		-- implot
+		"vendor/implot/*.cpp",
+		"vendor/implot/*.h",
+
+		-- json
+		"vendor/json/src/modules/json.cppm",
+
 		-- fmt
 		"vendor/fmt/src/format.cc",
 		"vendor/fmt/src/os.cc",
@@ -56,7 +63,9 @@ project "HeronGui"
 		"%{wks.location}/Heron/utilities",
 		"%{wks.location}/HeronGui/vendor/ImNodeFlow/include",
 		"%{wks.location}/HeronGui/vendor/fmt/include",
-		"%{wks.location}/HeronGui/vendor/glad/include"
+		"%{wks.location}/HeronGui/vendor/glad/include",
+		"%{wks.location}/HeronGui/vendor/implot",
+		"%{wks.location}/HeronGui/vendor/json/single_include"
 	}
 
 	libdirs {

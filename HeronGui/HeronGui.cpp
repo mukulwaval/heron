@@ -11,6 +11,7 @@
 #include <ImNodeFlow.h>
 #include <imgui.h>
 #include <imgui_internal.h>
+#include <implot.h>
 
 #include <algorithm>
 #include <atomic>
@@ -39,6 +40,7 @@
 namespace HeronGui {
 struct MainEditor : public Application {
   std::unique_ptr<Nodes::NodeEditor> Editor;
+  int editorLoaded = 0;
 
   MainEditor(const char* name, int argc, char** argv)
       : Application(name, argc, argv)  // forward to base
@@ -267,9 +269,13 @@ struct MainEditor : public Application {
 
     ImGui::GetIO().ConfigDpiScaleFonts = true;
     ImGui::GetIO().ConfigDpiScaleViewports = true;
+
+    ImPlot::CreateContext();
   }
 
   void OnStop() override {
+    Editor.get()->SaveToFile("graph.json");
+    ImPlot::DestroyContext();
     Close();
     Quit();
   }
@@ -337,6 +343,12 @@ struct MainEditor : public Application {
       ImGui::PopFont();
 
       if (!Editor) Editor = std::make_unique<Nodes::NodeEditor>(500.0f);
+
+      if (editorLoaded == 0) editorLoaded = 1;
+      if(editorLoaded == 1) {
+          Editor.get()->LoadFromFile("graph.json");
+          editorLoaded = 2;
+      }
 
       if (Editor) {
         ImVec2 size = ImGui::GetContentRegionAvail();
@@ -1019,15 +1031,78 @@ struct MainEditor : public Application {
       ImGui::Separator();
 
       {
-        std::lock_guard lock(progressMutex);
+          std::lock_guard lock(progressMutex);
 
-        if (!accHistory.empty()) {
-          ImGui::PlotLines("Accuracy", accHistory.data(),
-                           (int)accHistory.size(), 0, nullptr, 0.0f, 1.0f,
-                           ImVec2(-1, 200));
-        } else {
-          ImGui::TextDisabled("Waiting for training data...");
-        }
+          if (!accHistory.empty()) {
+
+              // Build X axis once
+              static std::vector<float> x;
+              if (x.size() != accHistory.size()) {
+                  x.resize(accHistory.size());
+                  for (size_t i = 0; i < x.size(); ++i)
+                      x[i] = (float)i;
+              }
+
+              // ---- Compute padded Y range ----
+              float minY = accHistory[0];
+              float maxY = accHistory[0];
+
+              for (float v : accHistory) {
+                  minY = minY < v ? minY : v;
+                  maxY = minY > v ? minY : v;
+              }
+
+              // Add padding (10% of range, minimum safety)
+              float range = (maxY - minY) > 0.05f ? (maxY - minY) : 0.05f;
+              float pad = range * 0.15f;
+
+              float yMin = 0.0f > (minY - pad) ? 0.0f : (minY - pad);
+              float yMax = 1.0f < (maxY + pad) ? 1.0f : (maxY + pad);
+
+              // ---- Plot ----
+              if (ImPlot::BeginPlot(
+                  "Training Accuracy",
+                  ImVec2(-1, -1),            // USE ALL AVAILABLE SPACE
+                  ImPlotFlags_NoLegend
+              )) {
+
+                  // Axes labels
+                  ImPlot::SetupAxes(
+                      "Iteration",
+                      "Accuracy",
+                      ImPlotAxisFlags_AutoFit,
+                      ImPlotAxisFlags_None
+                  );
+
+                  // Apply padded Y limits
+                  ImPlot::SetupAxisLimits(
+                      ImAxis_Y1,
+                      yMin,
+                      yMax,
+                      ImGuiCond_Always
+                  );
+
+                  // Style the line (smooth, visible)
+                  ImPlot::SetNextLineStyle(
+                      ImVec4(39.f/255, 84.f/255, 138.f/255, 255.f/255),
+                      2.5f
+                  );
+
+                  // Line only — no points
+                  ImPlot::PlotLine(
+                      "Accuracy",
+                      x.data(),
+                      accHistory.data(),
+                      (int)accHistory.size()
+                  );
+
+                  ImPlot::EndPlot();
+              }
+
+          }
+          else {
+              ImGui::TextDisabled("Waiting for training data...");
+          }
       }
 
       ImGui::End();
